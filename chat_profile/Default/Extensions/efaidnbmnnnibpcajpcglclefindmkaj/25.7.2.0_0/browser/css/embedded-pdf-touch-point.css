@@ -1,0 +1,18 @@
+/*************************************************************************
+* ADOBE CONFIDENTIAL
+* ___________________
+*
+*  Copyright 2015 Adobe Systems Incorporated
+*  All Rights Reserved.
+*
+* NOTICE:  All information contained herein is, and remains
+* the property of Adobe Systems Incorporated and its suppliers,
+* if any.  The intellectual and technical concepts contained
+* herein are proprietary to Adobe Systems Incorporated and its
+* suppliers and are protected by all applicable intellectual property laws,
+* including trade secret and or copyright laws.
+* Dissemination of this information or reproduction of this material
+* is strictly forbidden unless prior written permission is obtained
+* from Adobe Systems Incorporated.
+**************************************************************************/
+.acrobat-embedded-pdf-touch-point{align-content:center;align-items:center;background:#4b4b4b;border:1.5px;border-bottom-left-radius:16px;border-right:none;border-top-left-radius:16px;display:flex;flex-wrap:wrap;float:right;font-family:AdobeClean-Regular,Source Sans Pro,"system-ui";font-size:12px;font-weight:400;gap:2px;height:32px;justify-content:center;padding:7px 8px;pointer-events:all;position:relative;text-decoration:none;top:100px}.acrobat-embedded-pdf-icon:focus-visible{outline:1.5px solid #9aa0a6;outline-offset:3px}.acrobat-embedded-pdf-touch-point-tooltip{background:#6d6d6d;border-radius:4px;color:#fff;display:none;font-family:AdobeClean-Regular,Source Sans Pro,"system-ui";font-size:12px;left:-105px;padding:3px 9px 5px;pointer-events:none;position:absolute;text-align:center;text-wrap:nowrap;top:5px}.acrobat-embedded-pdf-touch-point-hamburger-menu-container{display:none}.acrobat-embedded-pdf-touch-point-hamburger-menu{border-radius:50%;height:18px;padding:2px;width:18px}.acrobat-embedded-pdf-touch-point-hamburger-menu:hover{background:#252525}.acrobat-embedded-pdf-touch-point-tooltip:after{border:4px solid transparent;border-left-color:#6d6d6d;content:"";left:100%;margin-top:-4px;position:absolute;top:50%}.acrobat-embedded-pdf-icon{background-color:#b30c00;border-radius:4px;height:11px;margin-left:4px;padding:4px;width:11px}.acrobat-embedded-pdf-touch-point:hover{cursor:pointer}.acrobat-embedded-pdf-icon:hover{background-color:#930000}.acrobat-embedded-pdf-icon:hover+.acrobat-embedded-pdf-touch-point-tooltip{display:flex}.acrobat-embedded-pdf-icon:focus-visible+.acrobat-embedded-pdf-touch-point-tooltip{display:flex}.acrobat-embedded-pdf-touch-point-context-menu{background:#252525;border:.5px solid hsla(0,0%,100%,.17);border-radius:4px;box-shadow:0 1px 4px 0 rgba(0,0,0,.15);color:#e3e3e3;font-family:AdobeClean-Regular,Source Sans Pro,"system-ui";gap:4px;left:-150px;padding-bottom:4px;padding-top:4px;position:absolute;top:36px;width:179px}.acrobat-embedded-pdf-touch-point-context-menu-item{cursor:pointer;font-size:14px;font-weight:400;padding:10px 12px 12px;text-align:start;transition:background-color .2s ease}.acrobat-embedded-pdf-touch-point-context-menu-item:hover{background-color:#404040}.acrobat-embedded-pdf-touch-point-context-menu-item-separator{background-color:hsla(0,0%,100%,.25);border:1px solid hsla(0,0%,100%,.17);margin:4px 12px}
