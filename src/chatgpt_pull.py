@@ -10,7 +10,6 @@ Usage
 python chatgpt_pull.py <conversation_id>
 """
 import asyncio
-import sys
 import time
 from pathlib import Path
 
@@ -19,10 +18,8 @@ import nodriver.core.connection as ndc
 from markdownify import markdownify as md
 
 CHAT = "https://chat.openai.com"
-PROFILE_DIR = (
-    r"E:\GitHub\finance-podcast-generator\chat_profile"  # persistent Chrome profile
-)
-COOKIE_STORE = Path("chat_cookies.json")
+PROFILE_DIR = r"E:\GitHub\finance-podcast-generator\chat_profile"
+COOKIE_STORE = Path(PROFILE_DIR) / "chat_cookies.json"
 FIRST_RUN = not COOKIE_STORE.exists()
 
 
@@ -64,14 +61,11 @@ async def newest_reply(cid: str) -> str:
         )
 
         # 3️⃣  Block until the user presses Enter *without* freezing the event loop
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, input)  # unlimited time
+        await asyncio.get_running_loop().run_in_executor(None, input)  # unlimited time
 
         # 4️⃣  Persist the whole cookie jar for future headless runs
         await browser.cookies.save(COOKIE_STORE)
-        print("✅  Cookies saved → future runs will start headless and auto-logged-in.")
-
-        sys.exit(0)  # exit cleanly; cron will run headless next time
+        print("✅  Cookies saved → future runs will be auto-logged-in.")
 
     # 2️⃣  Navigate to the conversation
     await tab.get(f"{CHAT}/c/{cid}")
@@ -93,7 +87,7 @@ async def newest_reply(cid: str) -> str:
     deadline = time.perf_counter() + 60  # 60‑second timeout
     while html is None:
         if time.perf_counter() > deadline:
-            raise TimeoutError("No assistant message after 60 s")
+            raise TimeoutError("No assistant message after 60 s")
         try:
             html = await html_of_last_bubble()
         except ndc.ProtocolException as e:
@@ -105,14 +99,16 @@ async def newest_reply(cid: str) -> str:
 
     # 4️⃣  Convert HTML → Markdown
     markdown = md(html, strip=["span"]).strip()
-    return markdown
+
+    # Save the markdown to /tmp/chatgpt_reply.md
+    with open("tmp/output.txt", "w") as text_file:
+        text_file.write(markdown)
+    print("✅  Saved the newest assistant reply to tmp/output.txt")
 
 
-# -------------------------------------------------------------------------- #
 if __name__ == "__main__":
     cid = "6855081e-83e8-8005-81bd-bdd27276805e"
 
     # nodriver's own helper avoids "event loop closed" issues on Windows
     loop = nodriver.loop()
     output = loop.run_until_complete(newest_reply(cid))
-    print(output)

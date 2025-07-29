@@ -5,5 +5,8 @@ Read the output from a specific chat in a ChatGPT conversation.
 https://github.com/Priyanshu-hawk/ChatGPT-unofficial-api-selenium
 https://github.com/theAbdoSabbagh/UnlimitedGPT
 
-# NotebookLLM to Spotify
+# NotebookLM to Spotify
 https://github.com/upamune/notebooklm-podcast-automator?tab=readme-ov-file
+
+## NotebookLM
+https://github.com/DataNath/notebooklm_source_automation
