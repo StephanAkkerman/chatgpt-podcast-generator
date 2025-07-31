@@ -18,7 +18,6 @@ import json
 import pathlib
 import time
 
-import requests
 from nodriver import loop, start
 
 # ─── user‑tweakables ────────────────────────────────────────────────────────
@@ -69,6 +68,66 @@ async def click(tab, target, timeout=120_000):
     await handle.click()
 
 
+async def new_notebook(tab, md: str):
+    # Locate "Create new notebook" button and click it
+    sel = await first_selector(tab, CREATE_SELECTORS)
+    if not sel:
+        raise RuntimeError("Create‑notebook button not found – UI changed?")
+    await click(tab, sel)
+
+    # ---- after you clicked “Create / New notebook” -------------------
+    copied_text = await tab.find("Copied text")
+    await copied_text.click()
+
+    textarea = await tab.find("textarea[formcontrolname='text']")
+    await textarea.send_keys(md)  # Very slow
+
+    # Submit the dialog form directly (works for every language / theme)
+    await tab.evaluate("document.querySelector('form.content')?.requestSubmit()")
+
+    # Press the "Audio Overview" button
+    AUDIO_BTN = "button.audio-overview-button"
+
+    # wait until the button exists *and* is enabled
+    await tab.wait_for(AUDIO_BTN + ":not([disabled])", timeout=20_000)
+
+    btn = await tab.select(AUDIO_BTN)  # → NodeHandle
+    await btn.click()
+
+
+async def wait_until_gone(tab, selector: str, timeout_ms: int = 300_000):
+    """
+    Poll until `selector` no longer matches anything in the DOM.
+    Works with nodriver because the JS is a function string.
+    """
+    esc = selector.replace("\\", "\\\\").replace("'", "\\'")
+    js = f"() => !!document.querySelector('{esc}')"  # ⇦ function form
+
+    t0 = time.perf_counter()
+    while True:
+        still_there = await tab.evaluate(js)  # returns bool
+        if not still_there:
+            return  # element gone
+        if (time.perf_counter() - t0) * 1000 > timeout_ms:
+            raise TimeoutError(f"{selector} still present after {timeout_ms/1000:.0f}s")
+        await asyncio.sleep(0.5)
+
+
+async def wait_for_blob_href(tab, timeout_s=30):
+    JS = """(() => {
+        const a = document.querySelector('a[mat-menu-item][download]');
+        return a ? a.getAttribute('href') || '' : '';
+    })()"""
+    t0 = time.perf_counter()
+    while True:
+        href = await tab.evaluate(JS)  # returns str or ''
+        if href.startswith("blob:"):
+            return href
+        if time.perf_counter() - t0 > timeout_s:
+            raise TimeoutError("Download link never got a blob: href")
+        await asyncio.sleep(0.5)
+
+
 # ─── main worker ────────────────────────────────────────────────────────────
 async def run(md_file: pathlib.Path):
 
@@ -98,48 +157,72 @@ async def run(md_file: pathlib.Path):
         await browser.cookies.save(COOKIE_STORE)
         print("✅  Cookies saved to", COOKIE_STORE)
 
-    md = md_file.read_text()
+    # await new_notebook(tab, md_file.read_text(encoding="utf-8"))
 
-    # Locate "Create new notebook" button and click it
-    sel = await first_selector(tab, CREATE_SELECTORS)
-    if not sel:
-        raise RuntimeError("Create‑notebook button not found – UI changed?")
-    await click(tab, sel)
+    # For debugging, open an existing notebook
+    print("⏳  Opening existing notebook…")
+    # ── A. click the “My notebooks” toggle ────────────────────────────
+    my_notebooks_button = await tab.find("My notebooks")
+    await my_notebooks_button.click()
 
-    # ---- after you clicked “Create / New notebook” -------------------
-    copied_text = await tab.find("Copied text")
-    await copied_text.click()
+    # ── 2. wait until at least one project-button card is in the DOM ───
+    CARD_SEL = "project-button mat-card[role='button']"
+    await tab.wait_for(CARD_SEL, timeout=20_000)
 
-    textarea = await tab.find("textarea[formcontrolname='text']")
-    await textarea.send_keys(md)  # Very slow
+    # ── 3. click the FIRST tile (top-left = newest by default) ─────────
+    first_card = await tab.select(CARD_SEL)
+    await first_card.click()
 
-    # Click the insert button
-    INSERT_BTN = "button[textContent='Insert']"
-    # await tab.wait_for(INSERT_BTN, timeout=10_000)
-    h = await tab.select(INSERT_BTN)
-    await h.click()
+    # Click the load button (only when the notebook does already exist)
+    # ── wait for the “Load” CTA to appear and be enabled ───────────────
+    LOAD_BTN = "button[aria-label='Load the Audio Overview']"  # unique attribute
+    await tab.wait_for(LOAD_BTN + ":not([disabled])", timeout=60_000)
 
+    # ── click it ───────────────────────────────────────────────────────
+    await (await tab.select(LOAD_BTN)).click()
+
+    # ── 4. wait until the notebook view finishes loading ───────────────
+    await tab.wait_for("button.audio-overview-button", timeout=20_000)
+    print("✅  Existing notebook opened")
+
+    # Wait for the spinner to disappear
+    # 1. Wait for spinner gone
+    print("⏳  Waiting for spinner to disappear…")
+    await wait_until_gone(tab, ".mat-progress-spinner", timeout_ms=300_000)
+    print("✅  Spinner gone.")
+
+    # ─── 1. open the “more options” menu ───────────────────────────────
+    print("⏳  Waiting for the audio controls menu to appear…")
+    MENU_BTN = "button.audio-controls-button.menu-button"  # class is stable
+    await (await tab.select(MENU_BTN)).click()
+    print("✅  Menu opened.")
+
+    # 1) wait for ready href
+    href = await wait_for_blob_href(tab)
+    print("🔗 blob URL ready")
+
+    # 2) fetch the blob inside the page and return bytes
+    href_js = json.dumps(href)  # safe embedding
+    FETCH_JS = f"""
+    (async () => {{
+        const r   = await fetch({href_js});
+        const buf = new Uint8Array(await r.arrayBuffer());
+        return Array.from(buf);      // serialisable
+    }})()
+    """
+    audio_arr = await tab.evaluate(FETCH_JS)
+    if not isinstance(audio_arr, list) or not audio_arr:
+        raise RuntimeError("Failed to fetch blob data")
+
+    data = bytes(audio_arr)
+
+    # 3) save
+    mp3_path = OUT_DIR / f"{int(time.time())}.mp3"
+    mp3_path.write_bytes(data)
+    print(f"🎧  Saved → {mp3_path}")
+
+    # await browser.stop()
     await asyncio.get_running_loop().run_in_executor(None, input)
-
-    await click(tab, SEL["generate"], timeout=240_000)
-    await tab.wait_for(SEL["more"], timeout=300_000)
-    await tab.click(SEL["more"])
-    href = await tab.get_attribute(SEL["download"], "href")
-    if not href:
-        raise RuntimeError("Download link missing!")
-
-    # ── download MP3 with same cookies ─────────────────────────────────────
-    # sess = load_cookies_to_requests()
-    # mp3_path = OUT_DIR / f"{int(time.time())}.mp3"
-    # print("⬇️  downloading…")
-    # with sess.get(href, stream=True, timeout=120) as r:
-    #     r.raise_for_status()
-    #     with open(mp3_path, "wb") as f:
-    #         for chunk in r.iter_content(8192):
-    #             f.write(chunk)
-    # print(f"🎧  Saved → {mp3_path}")
-
-    await browser.stop()
 
 
 # ─── entry‑point ────────────────────────────────────────────────────────────
