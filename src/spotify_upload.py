@@ -1,4 +1,24 @@
+import asyncio
+import pathlib
+import time
+from pathlib import Path
+
 import nodriver
+import nodriver.core.connection as ndc
+from markdownify import markdownify as md
+from nodriver import loop, start
+
+from utils import start_browser
+
+# ─── user‑tweakables ────────────────────────────────────────────────────────
+PROFILE_DIR = (
+    r"E:\GitHub\finance-podcast-generator\notebooklm_profile"  # TODO: use local path
+)
+COOKIE_STORE = pathlib.Path(PROFILE_DIR) / "notebooklm_cookies.json"
+HEADLESS = False
+OUT_DIR = pathlib.Path.cwd() / "podcasts"
+OUT_DIR.mkdir(exist_ok=True)
+
 
 # Head to the spotify upload page
 "https://creators.spotify.com/pod/dashboard/episode/wizard"

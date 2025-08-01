@@ -17,27 +17,16 @@ import nodriver
 import nodriver.core.connection as ndc
 from markdownify import markdownify as md
 
+from utils import start_browser
+
 CHAT = "https://chat.openai.com"
 PROFILE_DIR = r"E:\GitHub\finance-podcast-generator\chat_profile"
 COOKIE_STORE = Path(PROFILE_DIR) / "chat_cookies.json"
 FIRST_RUN = not COOKIE_STORE.exists()
 
 
-async def start_browser(headless: bool):
-    """Launch nodriver with our persistent profile."""
-    return await nodriver.start(
-        headless=headless,
-        no_sandbox=True,
-        user_data_dir=PROFILE_DIR,
-        browser_args=[
-            "--disable-dev-shm-usage",
-            "--disable-features=ChromeWhatsNewUI",
-        ],
-    )
-
-
 async def newest_reply(cid: str) -> str:
-    browser = await start_browser(headless=False)
+    browser = await start_browser(headless=False, profile_dir=PROFILE_DIR)
     tab = browser.main_tab
 
     # 1️⃣  If we already have cookies, load them
