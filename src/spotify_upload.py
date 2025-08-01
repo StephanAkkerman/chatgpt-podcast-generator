@@ -12,12 +12,14 @@ from utils import start_browser
 
 # ─── user‑tweakables ────────────────────────────────────────────────────────
 PROFILE_DIR = (
-    r"E:\GitHub\finance-podcast-generator\notebooklm_profile"  # TODO: use local path
+    r"E:\GitHub\finance-podcast-generator\spotify_profile"  # TODO: use local path
 )
-COOKIE_STORE = pathlib.Path(PROFILE_DIR) / "notebooklm_cookies.json"
+COOKIE_STORE = pathlib.Path(PROFILE_DIR) / "spotify_cookies.json"
 HEADLESS = False
-OUT_DIR = pathlib.Path.cwd() / "podcasts"
-OUT_DIR.mkdir(exist_ok=True)
+
+
+async def main():
+    browser = await start_browser(headless=HEADLESS, profile_dir=PROFILE_DIR)
 
 
 # Head to the spotify upload page

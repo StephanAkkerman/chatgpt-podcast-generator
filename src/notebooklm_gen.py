@@ -17,16 +17,7 @@ import time
 
 from nodriver import loop
 
-from utils import start_browser
-
-# ─── user‑tweakables ────────────────────────────────────────────────────────
-PROFILE_DIR = (
-    r"E:\GitHub\finance-podcast-generator\notebooklm_profile"  # TODO: use local path
-)
-COOKIE_STORE = pathlib.Path(PROFILE_DIR) / "notebooklm_cookies.json"
-HEADLESS = False
-OUT_DIR = pathlib.Path.cwd() / "podcasts"
-OUT_DIR.mkdir(exist_ok=True)
+from utils import COOKIE_STORE, start_browser
 
 
 async def new_notebook(tab, md: str):
@@ -101,12 +92,8 @@ async def wait_until_gone(tab, selector: str, timeout_ms: int = 300_000):
 
 async def run(md_file: pathlib.Path):
 
-    browser = await start_browser(headless=HEADLESS, profile_dir=PROFILE_DIR)
+    browser = await start_browser(headless=False)
     tab = browser.main_tab
-
-    # 1️⃣ If we already have cookies, load them
-    if COOKIE_STORE.exists():
-        await browser.cookies.load(COOKIE_STORE)
 
     await tab.get("https://notebooklm.google.com")
 
