@@ -14,7 +14,6 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import json
 import pathlib
 import time
 
@@ -95,6 +94,22 @@ async def new_notebook(tab, md: str):
     await btn.click()
 
 
+async def existing_notebook(tab):
+    # For debugging, open an existing notebook
+    print("⏳  Opening existing notebook…")
+    # ── A. click the “My notebooks” toggle ────────────────────────────
+    my_notebooks_button = await tab.find("My notebooks")
+    await my_notebooks_button.click()
+
+    # ── 2. wait until at least one project-button card is in the DOM ───
+    CARD_SEL = "project-button mat-card[role='button']"
+    await tab.wait_for(CARD_SEL, timeout=20_000)
+
+    # ── 3. click the FIRST tile (top-left = newest by default) ─────────
+    first_card = await tab.select(CARD_SEL)
+    await first_card.click()
+
+
 async def wait_until_gone(tab, selector: str, timeout_ms: int = 300_000):
     """
     Poll until `selector` no longer matches anything in the DOM.
@@ -159,19 +174,7 @@ async def run(md_file: pathlib.Path):
 
     # await new_notebook(tab, md_file.read_text(encoding="utf-8"))
 
-    # For debugging, open an existing notebook
-    print("⏳  Opening existing notebook…")
-    # ── A. click the “My notebooks” toggle ────────────────────────────
-    my_notebooks_button = await tab.find("My notebooks")
-    await my_notebooks_button.click()
-
-    # ── 2. wait until at least one project-button card is in the DOM ───
-    CARD_SEL = "project-button mat-card[role='button']"
-    await tab.wait_for(CARD_SEL, timeout=20_000)
-
-    # ── 3. click the FIRST tile (top-left = newest by default) ─────────
-    first_card = await tab.select(CARD_SEL)
-    await first_card.click()
+    await existing_notebook(tab)
 
     # Click the load button (only when the notebook does already exist)
     # ── wait for the “Load” CTA to appear and be enabled ───────────────
@@ -197,34 +200,12 @@ async def run(md_file: pathlib.Path):
     await (await tab.select(MENU_BTN)).click()
     print("✅  Menu opened.")
 
-    # 1) wait for ready href
-    href = await wait_for_blob_href(tab)
-    print("🔗 blob URL ready")
+    await (await tab.select("a[download]")).click()
+    print("✅  Download triggered.")
 
-    # 2) fetch the blob inside the page and return bytes
-    href_js = json.dumps(href)  # safe embedding
-    FETCH_JS = f"""
-    (async () => {{
-        const r   = await fetch({href_js});
-        const buf = new Uint8Array(await r.arrayBuffer());
-        return Array.from(buf);      // serialisable
-    }})()
-    """
-    audio_arr = await tab.evaluate(FETCH_JS)
-    if not isinstance(audio_arr, list) or not audio_arr:
-        raise RuntimeError("Failed to fetch blob data")
-
-    data = bytes(audio_arr)
-
-    # 3) save
-    mp3_path = OUT_DIR / f"{int(time.time())}.mp3"
-    mp3_path.write_bytes(data)
-    print(f"🎧  Saved → {mp3_path}")
-
-    # await browser.stop()
-    await asyncio.get_running_loop().run_in_executor(None, input)
+    # TODO: remove the notebook
+    return
 
 
-# ─── entry‑point ────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     loop().run_until_complete(run(pathlib.Path("tmp/output.txt")))

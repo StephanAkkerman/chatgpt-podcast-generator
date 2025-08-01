@@ -6,7 +6,7 @@ https://github.com/Priyanshu-hawk/ChatGPT-unofficial-api-selenium
 https://github.com/theAbdoSabbagh/UnlimitedGPT
 
 # NotebookLM to Spotify
-https://github.com/upamune/notebooklm-podcast-automator?tab=readme-ov-file
+https://github.com/upamune/notebooklm-podcast-automator
 
 ## NotebookLM
 https://github.com/DataNath/notebooklm_source_automation
