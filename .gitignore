@@ -1,6 +1,6 @@
 /chat_profile
-/notebooklm_profile
-/chrome_profile
+/notebooklm_gen
+/spotify_upload
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

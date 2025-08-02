@@ -7,7 +7,7 @@ Fetch the newest assistant message from a ChatGPT conversation using nodriver.
 
 Usage
 -----
-python chatgpt_pull.py <conversation_id>
+python chatgpt_pull.py
 """
 import asyncio
 import time
@@ -16,40 +16,10 @@ import nodriver
 import nodriver.core.connection as ndc
 from markdownify import markdownify as md
 
-from utils import COOKIE_STORE, start_browser
+from utils import first_run_login, get_cookies_store, start_browser
 
 
-async def newest_reply(cid: str) -> str:
-    browser = await start_browser(headless=False)
-    tab = browser.main_tab
-
-    # 3️⃣  On first run, wait until the user finishes login + Cloudflare
-    if not COOKIE_STORE.exists():
-        print("🔑  First-time setup … a Chrome window will open on the login page.")
-
-        # 1️⃣  Send the tab straight to the Auth0 login form
-        await tab.get("https://auth.openai.com/log-in")
-
-        # 2️⃣  Tell the user what to do
-        print(
-            "\n"
-            "➡️  Please sign in with your OpenAI account.\n"
-            "   • solve any Cloudflare / CAPTCHA checks\n"
-            "   • wait until the normal ChatGPT interface (or your task thread) is visible\n"
-            "   • then come back to this terminal and PRESS <ENTER>\n"
-        )
-
-        # 3️⃣  Block until the user presses Enter *without* freezing the event loop
-        await asyncio.get_running_loop().run_in_executor(None, input)  # unlimited time
-
-        # 4️⃣  Persist the whole cookie jar for future headless runs
-        await browser.cookies.save(COOKIE_STORE)
-        print("✅  Cookies saved → future runs will be auto-logged-in.")
-
-    # 2️⃣  Navigate to the conversation
-    await tab.get(f"https://chat.openai.com/c/{cid}")
-
-    # 3️⃣  Poll the page every 500 ms until an assistant bubble exists
+async def get_html(tab: nodriver.Tab) -> str:
 
     async def html_of_last_bubble() -> str | None:
         return await tab.evaluate(
@@ -63,9 +33,8 @@ async def newest_reply(cid: str) -> str:
         )
 
     html = None
-    deadline = time.perf_counter() + 60  # 60‑second timeout
     while html is None:
-        if time.perf_counter() > deadline:
+        if time.perf_counter() > time.perf_counter() + 60:  # 60‑second timeout
             raise TimeoutError("No assistant message after 60 s")
         try:
             html = await html_of_last_bubble()
@@ -75,6 +44,24 @@ async def newest_reply(cid: str) -> str:
                 continue
             raise
         await asyncio.sleep(0.5)
+
+    return html
+
+
+async def newest_reply(cid: str) -> str:
+    profile_name = "chatgpt_pull"
+    browser = await start_browser(headless=False, profile_name=profile_name)
+    tab = browser.main_tab
+
+    cookie_store = get_cookies_store(profile_name)
+
+    await first_run_login(browser, tab, cookie_store, "https://auth.openai.com/log-in")
+
+    # 2️⃣  Navigate to the conversation
+    await tab.get(f"https://chat.openai.com/c/{cid}")
+
+    # 3️⃣  Poll the page every 500 ms until an assistant bubble exists
+    html = await get_html(tab)
 
     # 4️⃣  Convert HTML → Markdown
     markdown = md(html, strip=["span"]).strip()
@@ -91,3 +78,5 @@ if __name__ == "__main__":
     # nodriver's own helper avoids "event loop closed" issues on Windows
     loop = nodriver.loop()
     output = loop.run_until_complete(newest_reply(cid))
+
+    # In case of 409 error try via googling: chatGPT and then logging in

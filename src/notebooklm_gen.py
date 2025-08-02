@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
-markdown2mp3_notebooklm.py  –  nodriver edition
-Turn a local Markdown file into a NotebookLM Audio‑Overview MP3.
+Turn a local Markdown file into a NotebookLM Audio-Overview .wav file.
 
 First run shows Chrome so you can log in.
 After you hit <ENTER> in the terminal, cookies are written to COOKIE_STORE
 and every later run is fully headless + unattended.
 
 Usage:
-    python markdown2mp3_notebooklm.py /absolute/path/to/file.md
+    python notebooklm_gen.py
 """
 
 import asyncio
@@ -17,7 +16,7 @@ import time
 
 from nodriver import loop
 
-from utils import COOKIE_STORE, start_browser
+from utils import first_run_login, get_cookies_store, start_browser
 
 
 async def new_notebook(tab, md: str):
@@ -90,28 +89,69 @@ async def wait_until_gone(tab, selector: str, timeout_ms: int = 300_000):
         await asyncio.sleep(0.5)
 
 
-async def run(md_file: pathlib.Path):
+async def element_text(el) -> str:
+    """Return trimmed textContent from a nodriver Element handle."""
+    # 1️⃣ property on recent versions
+    if hasattr(el, "text"):
+        return el.text.strip()
 
-    browser = await start_browser(headless=False)
+    # 2️⃣ coroutine on a few releases
+    if hasattr(el, "inner_text"):
+        return (await el.inner_text()).strip()
+
+    # 3️⃣ universal fallback
+    return await el._tab.evaluate("(e) => e.textContent.trim()", el)
+
+
+async def get_notebook_summary(tab) -> str:
+    """
+    Return the full summary paragraph (including <strong> parts).
+    """
+    # Wait until the paragraph is in the DOM
+    await tab.wait_for(".summary-content p", timeout=10_000)
+
+    # One-shot JS IIFE → returns full innerText
+    # TODO: save with HTML tags like <strong>
+    summary = await tab.evaluate(
+        """
+        (() => {
+            const p = document.querySelector('.summary-content p');
+            return p ? p.innerText.trim() : '';
+        })()
+    """
+    )
+    return summary
+
+
+async def get_title_and_summary(tab):
+    # ---- title ----
+    await tab.wait_for("h1.notebook-title", timeout=10_000)
+    title_el = await tab.select("h1.notebook-title")
+    title = await element_text(title_el)
+
+    # ---- summary ----
+    summary = await get_notebook_summary(tab)
+
+    return title, summary
+
+
+async def run(md_file: pathlib.Path):
+    profile_name = "notebooklm_gen"
+    browser = await start_browser(headless=False, profile_name=profile_name)
     tab = browser.main_tab
 
     await tab.get("https://notebooklm.google.com")
 
-    # ── first‑run interactive login ────────────────────────────────────────
-    if not COOKIE_STORE.exists():
-        print("🔑  First run — log in / pass CAPTCHA in the opened window.")
-        print("When you see the NotebookLM home screen, press <ENTER> here.")
+    cookie_store = get_cookies_store(profile_name)
 
-        # 3️⃣  Block until the user presses Enter *without* freezing the event loop
-        await asyncio.get_running_loop().run_in_executor(None, input)
+    # first‑run interactive login
+    await first_run_login(browser, tab, cookie_store)
 
-        # Save the cookies
-        await browser.cookies.save(COOKIE_STORE)
-        print("✅  Cookies saved to", COOKIE_STORE)
+    # Create a new notebook
+    # await new_notebook(tab, md_file.read_text(encoding="utf-8"))
 
-    await new_notebook(tab, md_file.read_text(encoding="utf-8"))
-
-    # await existing_notebook(tab)
+    # Debugging: use existing notebook
+    await existing_notebook(tab)
 
     # Wait for the spinner to disappear
     # 1. Wait for spinner gone
@@ -127,7 +167,24 @@ async def run(md_file: pathlib.Path):
     await (await tab.select("a[download]")).click()
     print("✅  Download triggered.")
 
-    # TODO: remove the notebook from the overview
+    # Get the title
+    title, summary = await get_title_and_summary(tab)
+
+    # Save the title and summary to a text file
+    output_path = pathlib.Path("tmp/title.txt")
+    output_path.write_text(title, encoding="utf-8")
+    print(f"✅  Saved the title to {output_path}")
+
+    summary_path = pathlib.Path("tmp/summary.txt")
+    summary_path.write_text(summary, encoding="utf-8")
+    print(f"✅  Saved the summary to {summary_path}")
+
+    # Optional: head back to overview
+    # Delete the last notebook
+
+    # Debugging: Keep the browser open
+    await asyncio.get_running_loop().run_in_executor(None, input)
+
     return
 
 
