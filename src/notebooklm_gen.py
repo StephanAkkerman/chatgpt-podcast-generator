@@ -96,24 +96,6 @@ async def existing_notebook(tab):
     print("✅  Existing notebook opened")
 
 
-async def wait_until_gone(tab, selector: str, timeout_ms: int = 300_000):
-    """
-    Poll until `selector` no longer matches anything in the DOM.
-    Works with nodriver because the JS is a function string.
-    """
-    esc = selector.replace("\\", "\\\\").replace("'", "\\'")
-    js = f"() => !!document.querySelector('{esc}')"  # ⇦ function form
-
-    t0 = time.perf_counter()
-    while True:
-        still_there = await tab.evaluate(js)  # returns bool
-        if not still_there:
-            return  # element gone
-        if (time.perf_counter() - t0) * 1000 > timeout_ms:
-            raise TimeoutError(f"{selector} still present after {timeout_ms/1000:.0f}s")
-        await asyncio.sleep(0.5)
-
-
 async def element_text(el) -> str:
     """Return trimmed textContent from a nodriver Element handle."""
     # 1️⃣ property on recent versions
@@ -190,15 +172,6 @@ async def generate_podcast(content: str):
     # Get the title
     title, summary = await get_title_and_summary(tab)
 
-    # For debugging, save the title and summary to files
-    # output_path = pathlib.Path("tmp/title.txt")
-    # output_path.write_text(title, encoding="utf-8")
-    # print(f"✅  Saved the title to {output_path}")
-
-    # summary_path = pathlib.Path("tmp/summary.txt")
-    # summary_path.write_text(summary, encoding="utf-8")
-    # print(f"✅  Saved the summary to {summary_path}")
-
     # # 1️⃣  You click the "Download" link in NotebookLM here …
     #     (the browser starts writing xxx.wav.crdownload)
     print("⏳  Waiting for the download to finish…")
@@ -207,9 +180,6 @@ async def generate_podcast(content: str):
 
     # Optional: head back to overview
     # Delete the last notebook
-
-    # Debugging: Keep the browser open
-    # await asyncio.get_running_loop().run_in_executor(None, input)
 
     return title, summary, wav_path
 

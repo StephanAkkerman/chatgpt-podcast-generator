@@ -16,7 +16,7 @@ def latest_wav(downloads: Path | None = None) -> Path:
     return wavs[0]
 
 
-async def upload_podcast(title, summary, wav_path):
+async def upload_podcast(title: str, summary: str, wav_path: Path):
     profile_name = "spotify_upload"
     browser = await start_browser(profile_name=profile_name)
     tab = browser.main_tab
@@ -45,12 +45,12 @@ async def upload_podcast(title, summary, wav_path):
     btn = await tab.find("HTML")
     await btn.click()
 
-    # -------- 2.  focus the content-editable box ----------------------------
+    # Focus the content-editable box
     await tab.wait_for("textarea[name='description']", timeout=10_000)
     box = await tab.find("textarea[name='description']")
     await box.click()
 
-    # -------- 4.  type the description (one call, Slate receives real input)-
+    # Type the summary
     await box.send_keys(summary)
     print("📝  Description field filled")
 
@@ -69,9 +69,7 @@ async def upload_podcast(title, summary, wav_path):
     await (await tab.select(PUBLISH_SEL)).click()
 
     # Remove the .wav file from the local disk
-
-    # Debugging: Keep the browser open
-    # await asyncio.get_running_loop().run_in_executor(None, input)
+    wav_path.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
