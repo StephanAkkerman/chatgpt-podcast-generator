@@ -1,12 +1,5 @@
-# ChatGPT scraper
-Read the output from a specific chat in a ChatGPT conversation.
+# ChatGPT to Spotify Podcast
+This project read the chatGPT output from a scheduled task, sends it to NotebookLM to generate a podcast, and then uploads it to Spotify.
 
-## Deprecated
-https://github.com/Priyanshu-hawk/ChatGPT-unofficial-api-selenium
-https://github.com/theAbdoSabbagh/UnlimitedGPT
-
-# NotebookLM to Spotify
-https://github.com/upamune/notebooklm-podcast-automator
-
-## NotebookLM
-https://github.com/DataNath/notebooklm_source_automation
+## ChatGPT Login
+If you run into a 409 error, try heading to the chatGPT website via Google and logging in like normal. This will prevent the 409 error.

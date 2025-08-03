@@ -1,17 +1,4 @@
-#!/usr/bin/env python3
-"""
-Turn a local Markdown file into a NotebookLM Audio-Overview .wav file.
-
-First run shows Chrome so you can log in.
-After you hit <ENTER> in the terminal, cookies are written to COOKIE_STORE
-and every later run is fully headless + unattended.
-
-Usage:
-    python notebooklm_gen.py
-"""
-
 import asyncio
-import pathlib
 import time
 from pathlib import Path
 
@@ -19,7 +6,7 @@ from nodriver import loop
 
 from utils import first_run_login, get_cookies_store, start_browser
 
-DOWNLOAD_DIR = Path.home() / "Downloads"  # or your custom dir
+DOWNLOAD_DIR = Path.home() / "Downloads"
 TIMEOUT_S = 120  # 2-minute max
 
 
@@ -173,7 +160,7 @@ async def get_title_and_summary(tab):
     return title, summary
 
 
-async def generate_podcast(md_file: pathlib.Path = pathlib.Path("tmp/output.txt")):
+async def generate_podcast(content: str):
     profile_name = "notebooklm_gen"
     browser = await start_browser(headless=False, profile_name=profile_name)
     tab = browser.main_tab
@@ -186,7 +173,7 @@ async def generate_podcast(md_file: pathlib.Path = pathlib.Path("tmp/output.txt"
     await first_run_login(browser, tab, cookie_store)
 
     # Create a new notebook
-    await new_notebook(tab, md_file.read_text(encoding="utf-8"))
+    await new_notebook(tab, content)
 
     # Debugging: use existing notebook
     # await existing_notebook(tab)
@@ -204,13 +191,13 @@ async def generate_podcast(md_file: pathlib.Path = pathlib.Path("tmp/output.txt"
     title, summary = await get_title_and_summary(tab)
 
     # For debugging, save the title and summary to files
-    output_path = pathlib.Path("tmp/title.txt")
-    output_path.write_text(title, encoding="utf-8")
-    print(f"✅  Saved the title to {output_path}")
+    # output_path = pathlib.Path("tmp/title.txt")
+    # output_path.write_text(title, encoding="utf-8")
+    # print(f"✅  Saved the title to {output_path}")
 
-    summary_path = pathlib.Path("tmp/summary.txt")
-    summary_path.write_text(summary, encoding="utf-8")
-    print(f"✅  Saved the summary to {summary_path}")
+    # summary_path = pathlib.Path("tmp/summary.txt")
+    # summary_path.write_text(summary, encoding="utf-8")
+    # print(f"✅  Saved the summary to {summary_path}")
 
     # # 1️⃣  You click the "Download" link in NotebookLM here …
     #     (the browser starts writing xxx.wav.crdownload)

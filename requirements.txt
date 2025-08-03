@@ -1,2 +1,3 @@
-requests
-playwright
+nodriver
+python-dotenv
+markdownify

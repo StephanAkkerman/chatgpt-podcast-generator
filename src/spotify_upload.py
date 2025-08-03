@@ -1,4 +1,3 @@
-import pathlib
 from pathlib import Path
 
 from nodriver import loop
@@ -17,7 +16,7 @@ def latest_wav(downloads: Path | None = None) -> Path:
     return wavs[0]
 
 
-async def upload_podcast():
+async def upload_podcast(title, summary, wav_path):
     profile_name = "spotify_upload"
     browser = await start_browser(profile_name=profile_name)
     tab = browser.main_tab
@@ -34,14 +33,11 @@ async def upload_podcast():
     await tab.wait_for("input[type='file']", timeout=10_000)
     file_input = await tab.select("input[type='file']")  # Element handle
 
-    wav_path = latest_wav()
-
     # 3.  inject file *without* opening the OS chooser
     await file_input.send_file(wav_path)
     print("⏫  upload started:", wav_path)
 
-    # Fill in the title using the title.txt file
-    title = pathlib.Path("tmp/title.txt").read_text(encoding="utf-8")
+    # Fill in the title
     textarea = await tab.find("input[name='title']")
     await textarea.send_keys(title)
 
@@ -49,15 +45,13 @@ async def upload_podcast():
     btn = await tab.find("HTML")
     await btn.click()
 
-    # -------- 1.  load the description text ---------------------------------
-    desc = pathlib.Path("tmp/summary.txt").read_text(encoding="utf-8")
     # -------- 2.  focus the content-editable box ----------------------------
     await tab.wait_for("textarea[name='description']", timeout=10_000)
     box = await tab.find("textarea[name='description']")
     await box.click()
 
     # -------- 4.  type the description (one call, Slate receives real input)-
-    await box.send_keys(desc)
+    await box.send_keys(summary)
     print("📝  Description field filled")
 
     # Click "Next" button (bottom right)
@@ -81,4 +75,4 @@ async def upload_podcast():
 
 
 if __name__ == "__main__":
-    loop().run_until_complete(upload_podcast())
+    loop().run_until_complete(upload_podcast(latest_wav()))
