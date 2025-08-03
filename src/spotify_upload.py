@@ -1,4 +1,3 @@
-import asyncio
 import pathlib
 from pathlib import Path
 
@@ -18,7 +17,7 @@ def latest_wav(downloads: Path | None = None) -> Path:
     return wavs[0]
 
 
-async def main():
+async def upload_podcast():
     profile_name = "spotify_upload"
     browser = await start_browser(profile_name=profile_name)
     tab = browser.main_tab
@@ -78,8 +77,8 @@ async def main():
     # Remove the .wav file from the local disk
 
     # Debugging: Keep the browser open
-    await asyncio.get_running_loop().run_in_executor(None, input)
+    # await asyncio.get_running_loop().run_in_executor(None, input)
 
 
 if __name__ == "__main__":
-    loop().run_until_complete(main())
+    loop().run_until_complete(upload_podcast())

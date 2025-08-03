@@ -13,10 +13,46 @@ Usage:
 import asyncio
 import pathlib
 import time
+from pathlib import Path
 
 from nodriver import loop
 
 from utils import first_run_login, get_cookies_store, start_browser
+
+DOWNLOAD_DIR = Path.home() / "Downloads"  # or your custom dir
+TIMEOUT_S = 120  # 2-minute max
+
+
+async def wait_for_download(dir_path: Path, timeout_s: int = 120):
+    """
+    Block until Chrome finishes every .crdownload in dir_path
+    (or timeout).  Returns the final file path once complete.
+    """
+    t0 = time.perf_counter()
+    final_path = None
+
+    while True:
+        # look for *.crdownload AND any new non-tmp file
+        tmp_files = list(dir_path.glob("*.crdownload"))
+        finished = [
+            p
+            for p in dir_path.iterdir()
+            if not p.name.endswith(".crdownload") and p.stat().st_mtime > t0
+        ]
+
+        if not tmp_files and finished:
+            # assume the most recent finished file is our WAV
+            final_path = max(finished, key=lambda p: p.stat().st_mtime)
+            break
+
+        if time.perf_counter() - t0 > timeout_s:
+            print("⏳  Timeout: no download finished in", timeout_s, "seconds")
+            print("Not yet downloaded:", tmp_files)
+            raise TimeoutError("Download did not finish in allotted time")
+
+        await asyncio.sleep(0.5)  # poll twice a second
+
+    return final_path
 
 
 async def new_notebook(tab, md: str):
@@ -31,10 +67,12 @@ async def new_notebook(tab, md: str):
     await copied_text.click()
 
     textarea = await tab.find("textarea[formcontrolname='text']")
-    await textarea.send_keys(md)  # Very slow
+    await textarea.send_keys(md)
 
     # Submit the dialog form directly (works for every language / theme)
     await tab.evaluate("document.querySelector('form.content')?.requestSubmit()")
+
+    # TODO: press the customize button on Audio Overview
 
     # Press the "Audio Overview" button
     AUDIO_BTN = "button.audio-overview-button"
@@ -135,7 +173,7 @@ async def get_title_and_summary(tab):
     return title, summary
 
 
-async def run(md_file: pathlib.Path):
+async def generate_podcast(md_file: pathlib.Path = pathlib.Path("tmp/output.txt")):
     profile_name = "notebooklm_gen"
     browser = await start_browser(headless=False, profile_name=profile_name)
     tab = browser.main_tab
@@ -148,19 +186,14 @@ async def run(md_file: pathlib.Path):
     await first_run_login(browser, tab, cookie_store)
 
     # Create a new notebook
-    # await new_notebook(tab, md_file.read_text(encoding="utf-8"))
+    await new_notebook(tab, md_file.read_text(encoding="utf-8"))
 
     # Debugging: use existing notebook
-    await existing_notebook(tab)
+    # await existing_notebook(tab)
 
-    # Wait for the spinner to disappear
-    # 1. Wait for spinner gone
-    print("⏳  Waiting for spinner to disappear…")
-    await wait_until_gone(tab, ".mat-progress-spinner", timeout_ms=300_000)
-    print("✅  Spinner gone.")
-
-    # ─── 1. open the “more options” menu ───────────────────────────────
+    # Wait until the "Audio Overview" button is enabled
     print("⏳  Waiting for the audio controls menu to appear…")
+    await tab.wait_for("button.audio-controls-button.menu-button", timeout=300_000)
     await (await tab.select("button.audio-controls-button.menu-button")).click()
     print("✅  Menu opened.")
 
@@ -179,14 +212,20 @@ async def run(md_file: pathlib.Path):
     summary_path.write_text(summary, encoding="utf-8")
     print(f"✅  Saved the summary to {summary_path}")
 
+    # # 1️⃣  You click the "Download" link in NotebookLM here …
+    #     (the browser starts writing xxx.wav.crdownload)
+    print("⏳  Waiting for the download to finish…")
+    wav_path = await wait_for_download(DOWNLOAD_DIR, TIMEOUT_S)
+    print("✅  Download ready →", wav_path)
+
     # Optional: head back to overview
     # Delete the last notebook
 
     # Debugging: Keep the browser open
-    await asyncio.get_running_loop().run_in_executor(None, input)
+    # await asyncio.get_running_loop().run_in_executor(None, input)
 
-    return title, summary
+    return title, summary, wav_path
 
 
 if __name__ == "__main__":
-    loop().run_until_complete(run(pathlib.Path("tmp/output.txt")))
+    loop().run_until_complete(generate_podcast())

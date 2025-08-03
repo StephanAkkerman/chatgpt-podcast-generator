@@ -1,6 +1,8 @@
-/chat_profile
+/chatgpt_pull
 /notebooklm_gen
 /spotify_upload
+
+tmp/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

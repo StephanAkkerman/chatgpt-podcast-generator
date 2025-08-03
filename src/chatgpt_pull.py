@@ -48,7 +48,7 @@ async def get_html(tab: nodriver.Tab) -> str:
     return html
 
 
-async def newest_reply(cid: str) -> str:
+async def get_latest_reply(cid: str) -> str:
     profile_name = "chatgpt_pull"
     browser = await start_browser(headless=False, profile_name=profile_name)
     tab = browser.main_tab
@@ -77,6 +77,6 @@ if __name__ == "__main__":
 
     # nodriver's own helper avoids "event loop closed" issues on Windows
     loop = nodriver.loop()
-    output = loop.run_until_complete(newest_reply(cid))
+    output = loop.run_until_complete(get_latest_reply(cid))
 
     # In case of 409 error try via googling: chatGPT and then logging in
