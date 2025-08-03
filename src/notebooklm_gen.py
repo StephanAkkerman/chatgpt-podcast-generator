@@ -170,7 +170,7 @@ async def run(md_file: pathlib.Path):
     # Get the title
     title, summary = await get_title_and_summary(tab)
 
-    # Save the title and summary to a text file
+    # For debugging, save the title and summary to files
     output_path = pathlib.Path("tmp/title.txt")
     output_path.write_text(title, encoding="utf-8")
     print(f"✅  Saved the title to {output_path}")
@@ -185,7 +185,7 @@ async def run(md_file: pathlib.Path):
     # Debugging: Keep the browser open
     await asyncio.get_running_loop().run_in_executor(None, input)
 
-    return
+    return title, summary
 
 
 if __name__ == "__main__":

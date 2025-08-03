@@ -2,7 +2,6 @@ import asyncio
 import pathlib
 from pathlib import Path
 
-import nodriver
 from nodriver import loop
 
 from utils import first_run_login, get_cookies_store, start_browser
@@ -62,13 +61,19 @@ async def main():
     await box.send_keys(desc)
     print("📝  Description field filled")
 
-    # Maybe fill in the episode number?
+    # Click "Next" button (bottom right)
+    await (await tab.find("Next")).click()
 
-    # Click "Next" button
+    # wait until the “Now” option is rendered
+    await tab.wait_for("label[for='publish-date-now']", timeout=10_000)
 
-    # Set the publish date radio button to now
+    # click the label – automatically selects the underlying radio button
+    await (await tab.select("label[for='publish-date-now']")).click()
 
-    # Click the "Publish" button
+    # Wait for the publish button to be ready
+    PUBLISH_SEL = "button[type='submit'][form='review-form']"
+    await tab.wait_for(PUBLISH_SEL + ":not([disabled])", timeout=60_000)
+    await (await tab.select(PUBLISH_SEL)).click()
 
     # Remove the .wav file from the local disk
 
