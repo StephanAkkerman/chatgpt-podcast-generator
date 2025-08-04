@@ -1,8 +1,32 @@
+import asyncio
 import logging
+import time
+import urllib.parse
 
 import nodriver
 
-from utils import first_run_login, get_cookies_store, start_browser
+from utils import get_cookies_store, start_browser
+
+
+async def wait_until_host(tab, target_host: str, timeout_s: int = 300):
+    """
+    Block until `urllib.parse.urlparse(tab.url).netloc` == target_host
+    or until `timeout_s` seconds elapse.
+
+    Works regardless of how many third-party redirects happen in between.
+    """
+    start = time.time()
+    while True:
+        host = urllib.parse.urlparse(tab.url).netloc
+        if host == target_host:
+            # Give the main UI a moment to render
+            await asyncio.sleep(1)
+            return
+        if time.time() - start > timeout_s:
+            raise TimeoutError(
+                f"Still not on {target_host} after {timeout_s}s (current host: {host})"
+            )
+        await asyncio.sleep(0.5)
 
 
 async def chatgpt_login():
@@ -14,8 +38,14 @@ async def chatgpt_login():
 
     cookie_store = get_cookies_store(profile_name)
 
-    # first‑run interactive login
-    await first_run_login(browser, tab, cookie_store, "https://chatgpt.com/auth/login")
+    if cookie_store.exists():
+        return
+
+    await tab.get("https://chatgpt.com/auth/login")
+    landing_host: str = "chatgpt.com"
+    await wait_until_host(tab, landing_host)
+    await browser.cookies.save(cookie_store)
+    logging.info("✅  Cookies saved to %s", cookie_store)
 
 
 if __name__ == "__main__":
