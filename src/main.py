@@ -1,11 +1,27 @@
+import asyncio
+import datetime
+import logging
+import zoneinfo
+
 import nodriver
 
 from chatgpt_pull import get_latest_reply
 from notebooklm_gen import generate_podcast
 from spotify_upload import upload_podcast
 
+UTC = zoneinfo.ZoneInfo("UTC")
 
-def main():
+
+def seconds_until_5utc() -> float:
+    """Return how many seconds until the next 05:00 UTC."""
+    now = datetime.datetime.now(UTC)
+    target = now.replace(hour=5, minute=0, second=0, microsecond=0)
+    if target <= now:  # already past 05:00 today
+        target += datetime.timedelta(days=1)
+    return (target - now).total_seconds()
+
+
+async def run_once():
     # nodriver's own helper avoids "event loop closed" issues on Windows
     loop = nodriver.loop()
     md = loop.run_until_complete(get_latest_reply())
@@ -17,7 +33,22 @@ def main():
     loop.run_until_complete(upload_podcast(title, summary, wav_path))
 
 
+async def scheduler():
+    while True:
+        sleep_for = seconds_until_5utc()
+        logging.info("Sleeping %.1f s until next 05:00 UTC run", sleep_for)
+        await asyncio.sleep(sleep_for)
+        try:
+            await run_once()
+            logging.info("Daily run finished")
+        except Exception:
+            logging.exception("Daily run failed")
+
+
 if __name__ == "__main__":
-    # TODO: Loop every 24h at 05:00 UTC
-    # TODO: add logging
-    main()
+    logging.basicConfig(
+        filename="daily.log",
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s: %(message)s",
+    )
+    asyncio.run(scheduler())
