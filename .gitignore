@@ -1,6 +1,7 @@
-/chatgpt_pull
-/notebooklm_gen
-/spotify_upload
+# Browser profiles
+/chatgpt
+/notebooklm
+/spotify
 
 tmp/*
 

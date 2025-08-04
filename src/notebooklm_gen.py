@@ -147,7 +147,7 @@ async def get_title_and_summary(tab):
 
 
 async def generate_podcast(content: str):
-    profile_name = "notebooklm_gen"
+    profile_name = "notebooklm"
     browser = await start_browser(headless=False, profile_name=profile_name)
     tab = browser.main_tab
 

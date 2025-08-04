@@ -41,7 +41,7 @@ async def get_html(tab: nodriver.Tab) -> str:
 
 
 async def get_latest_reply() -> str:
-    profile_name = "chatgpt_pull"
+    profile_name = "chatgpt"
     browser = await start_browser(headless=False, profile_name=profile_name)
     tab = browser.main_tab
 

@@ -20,7 +20,7 @@ def latest_wav(downloads: Path | None = None) -> Path:
 
 
 async def upload_podcast(title: str, summary: str, wav_path: Path):
-    profile_name = "spotify_upload"
+    profile_name = "spotify"
     browser = await start_browser(profile_name=profile_name)
     tab = browser.main_tab
 
