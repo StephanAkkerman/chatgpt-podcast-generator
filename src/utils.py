@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import sys
 from pathlib import Path
 
 import nodriver
@@ -62,19 +63,21 @@ async def start_browser(
     return browser
 
 
-async def first_run_login(browser, tab, cookie_store, custom_url: str = None) -> None:
-    if not cookie_store.exists():
-        if custom_url:
-            await tab.get(custom_url)
-
-        logger.info("🔑  First run — log in / pass CAPTCHA in the opened window.")
-        logger.info("When you see the NotebookLM home screen, press <ENTER> here.")
-
-        # 3️⃣  Block until the user presses Enter *without* freezing the event loop
-        await asyncio.get_running_loop().run_in_executor(None, input)
-
-        # Save the cookies
-        await browser.cookies.save(cookie_store)
-        logger.info("✅  Cookies saved to %s", cookie_store)
-    else:
+async def first_run_login(browser, tab, cookie_store, custom_url=None) -> None:
+    if cookie_store.exists():
         logger.info("Found existing cookies at %s", cookie_store)
+        await browser.cookies.load(cookie_store)
+        return
+
+    if custom_url:
+        await tab.get(custom_url)
+
+    logger.info("🔑  First run — log in in the opened window.")
+    if sys.stdin.isatty():
+        logger.info("After logging in, press <ENTER> here.")
+        await asyncio.to_thread(input)
+    else:
+        logger.info("Running headless; this is not yet supported…")
+
+    await browser.cookies.save(cookie_store)
+    logger.info("✅  Cookies saved to %s", cookie_store)
