@@ -14,7 +14,7 @@ EXTRA_ARGS = [
     "--disable-popup-blocking",
     "--start-maximized",
     "--disable-logging",
-    "--log-level=3",
+    "--logging-level=3",
     "--silent",
     "--disable-infobars",
     "--allow-running-insecure-content",
@@ -63,32 +63,65 @@ async def start_browser(
     return browser
 
 
-async def manual_checkpoint():
-    """Block until the user presses ENTER *or* Ctrl-C."""
-    prompt = "Log in, then press ENTER (or Ctrl-C) here… "
-    try:
-        # off-load to a thread so the event-loop stays alive
-        await asyncio.to_thread(input, prompt)
-    except (KeyboardInterrupt, EOFError):
-        # Ctrl-C or closed stdin ==> treat as “continue”
-        print("")  # newline so prompt looks finished
-        logger.info("Manual checkpoint skipped via Ctrl-C/EOF")
+# ------------------------------------------------------------------------
+async def wait_for_login_signal(prompt="logging in, then press ENTER or Ctrl-C here…"):
+    """
+    Suspend until the user either
+      • presses ENTER  (normal stdin)   OR
+      • hits Ctrl-C    (SIGINT)         OR
+      • closes the terminal (EOF)
+    The coroutine resumes without raising KeyboardInterrupt, so your
+    script continues smoothly.
+    """
+    import signal
+
+    loop = asyncio.get_running_loop()
+    fut = loop.create_future()
+
+    # 1️⃣  SIGINT handler (Ctrl-C)
+    def _on_sigint():
+        if not fut.done():
+            fut.set_result(None)  # wake the future
+
+    loop.add_signal_handler(signal.SIGINT, _on_sigint)
+
+    # 2️⃣  stdin reader in background thread (ENTER / EOF)
+    async def _stdin_task():
+        try:
+            await asyncio.to_thread(input, prompt)
+        except EOFError:
+            pass
+        if not fut.done():
+            fut.set_result(None)
+
+    asyncio.create_task(_stdin_task())
+
+    # 3️⃣  Wait until one of the two completes
+    await fut
+
+    # 4️⃣  Clean up
+    loop.remove_signal_handler(signal.SIGINT)
 
 
-async def first_run_login(browser, tab, cookie_store, custom_url=None) -> None:
+# ------------------------------------------------------------------------
+async def first_run_login(browser, tab, cookie_store: Path, login_url: str):
+    """
+    • If cookies exist → load them, return.
+    • Otherwise open login_url, let user sign in, wait for signal, save cookies.
+    """
     if cookie_store.exists():
-        logger.info("Found existing cookies at %s", cookie_store)
         await browser.cookies.load(cookie_store)
+        logging.info("✅  Cookies loaded from %s", cookie_store)
         return
 
-    if custom_url:
-        await tab.get(custom_url)
-
-    logger.info("🔑  First run — log in in the opened window.")
+    await tab.get(login_url)
+    logging.info("🔑  First run — logging in in the opened window.")
     if sys.stdin.isatty():
-        await manual_checkpoint()
+        await wait_for_login_signal()  # handles ENTER *or* Ctrl-C
     else:
-        logger.info("Running headless; this is not yet supported…")
+        logging.info("No interactive TTY; waiting until UI shows login…")
+        # optional: implement DOM polling fallback here
+        raise RuntimeError("Headless login not yet implemented")
 
     await browser.cookies.save(cookie_store)
-    logger.info("✅  Cookies saved to %s", cookie_store)
+    logging.info("✅  Cookies saved to %s", cookie_store)
