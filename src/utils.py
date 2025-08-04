@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from pathlib import Path
 
 import nodriver
@@ -18,6 +19,8 @@ EXTRA_ARGS = [
     "--allow-running-insecure-content",
     "--disable-features=ChromeWhatsNewUI",  # keeps the “What’s new” tab closed
 ]
+
+logger = logging.getLogger(__name__)
 
 
 def get_profile_dir(profile_name: str = "chrome_profile") -> Path:
@@ -45,16 +48,16 @@ async def start_browser(
         user_data_dir=profile_dir,
         browser_args=EXTRA_ARGS,
     )
-    print(f"🔍  Browser started with profile: {profile_dir}")
+    logger.info("🔍  Browser started with profile: %s", profile_dir)
 
     cookies_store = get_cookies_store(profile_name, cookies_file)
 
     # Load the cookies if they exist
     if cookies_store.exists():
         await browser.cookies.load(cookies_store)
-        print(f"🔑  Cookies loaded from: {cookies_store}")
+        logger.info("🔑  Cookies loaded from: %s", cookies_store)
     else:
-        print("🔑  No cookies found, starting fresh session.")
+        logger.info("🔑  No cookies found, starting fresh session.")
 
     return browser
 
@@ -64,14 +67,14 @@ async def first_run_login(browser, tab, cookie_store, custom_url: str = None) ->
         if custom_url:
             await tab.get(custom_url)
 
-        print("🔑  First run — log in / pass CAPTCHA in the opened window.")
-        print("When you see the NotebookLM home screen, press <ENTER> here.")
+        logger.info("🔑  First run — log in / pass CAPTCHA in the opened window.")
+        logger.info("When you see the NotebookLM home screen, press <ENTER> here.")
 
         # 3️⃣  Block until the user presses Enter *without* freezing the event loop
         await asyncio.get_running_loop().run_in_executor(None, input)
 
         # Save the cookies
         await browser.cookies.save(cookie_store)
-        print("✅  Cookies saved to", cookie_store)
+        logger.info("✅  Cookies saved to %s", cookie_store)
     else:
-        print(f"Found existing cookies at {cookie_store}")
+        logger.info("Found existing cookies at %s", cookie_store)

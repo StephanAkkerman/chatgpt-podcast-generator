@@ -1,8 +1,12 @@
 from pathlib import Path
+import logging
 
 from nodriver import loop
 
 from utils import first_run_login, get_cookies_store, start_browser
+
+
+logger = logging.getLogger(__name__)
 
 
 def latest_wav(downloads: Path | None = None) -> Path:
@@ -35,7 +39,7 @@ async def upload_podcast(title: str, summary: str, wav_path: Path):
 
     # 3.  inject file *without* opening the OS chooser
     await file_input.send_file(wav_path)
-    print("⏫  upload started:", wav_path)
+    logger.info("⏫  upload started: %s", wav_path)
 
     # Fill in the title
     textarea = await tab.find("input[name='title']")
@@ -52,7 +56,7 @@ async def upload_podcast(title: str, summary: str, wav_path: Path):
 
     # Type the summary
     await box.send_keys(summary)
-    print("📝  Description field filled")
+    logger.info("📝  Description field filled")
 
     # Click "Next" button (bottom right)
     await (await tab.find("Next")).click()
@@ -73,4 +77,5 @@ async def upload_podcast(title: str, summary: str, wav_path: Path):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     loop().run_until_complete(upload_podcast(latest_wav()))

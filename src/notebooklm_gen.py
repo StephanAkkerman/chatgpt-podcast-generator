@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import time
 from pathlib import Path
 
@@ -8,6 +9,9 @@ from utils import first_run_login, get_cookies_store, start_browser
 
 DOWNLOAD_DIR = Path.home() / "Downloads"
 TIMEOUT_S = 120  # 2-minute max
+
+
+logger = logging.getLogger(__name__)
 
 
 async def wait_for_download(dir_path: Path, timeout_s: int = 120):
@@ -33,8 +37,8 @@ async def wait_for_download(dir_path: Path, timeout_s: int = 120):
             break
 
         if time.perf_counter() - t0 > timeout_s:
-            print("⏳  Timeout: no download finished in", timeout_s, "seconds")
-            print("Not yet downloaded:", tmp_files)
+            logger.warning("⏳  Timeout: no download finished in %s seconds", timeout_s)
+            logger.warning("Not yet downloaded: %s", tmp_files)
             raise TimeoutError("Download did not finish in allotted time")
 
         await asyncio.sleep(0.5)  # poll twice a second
@@ -44,7 +48,7 @@ async def wait_for_download(dir_path: Path, timeout_s: int = 120):
 
 async def new_notebook(tab, md: str):
     # Locate "Create new notebook" button and click it
-    print("⏳  Creating new notebook…")
+    logger.info("⏳  Creating new notebook…")
     # ── A. click the “My notebooks” toggle ────────────────────────────
     my_notebooks_button = await tab.find("Create new notebook")
     await my_notebooks_button.click()
@@ -73,7 +77,7 @@ async def new_notebook(tab, md: str):
 
 async def existing_notebook(tab):
     # For debugging, open an existing notebook
-    print("⏳  Opening existing notebook…")
+    logger.info("⏳  Opening existing notebook…")
     # ── A. click the “My notebooks” toggle ────────────────────────────
     my_notebooks_button = await tab.find("My notebooks")
     await my_notebooks_button.click()
@@ -93,7 +97,7 @@ async def existing_notebook(tab):
 
     # ── 4. wait until the notebook view finishes loading ───────────────
     await tab.wait_for("button.audio-overview-button", timeout=20_000)
-    print("✅  Existing notebook opened")
+    logger.info("✅  Existing notebook opened")
 
 
 async def element_text(el) -> str:
@@ -161,22 +165,22 @@ async def generate_podcast(content: str):
     # await existing_notebook(tab)
 
     # Wait until the "Audio Overview" button is enabled
-    print("⏳  Waiting for the audio controls menu to appear…")
+    logger.info("⏳  Waiting for the audio controls menu to appear…")
     await tab.wait_for("button.audio-controls-button.menu-button", timeout=300_000)
     await (await tab.select("button.audio-controls-button.menu-button")).click()
-    print("✅  Menu opened.")
+    logger.info("✅  Menu opened.")
 
     await (await tab.select("a[download]")).click()
-    print("✅  Download triggered.")
+    logger.info("✅  Download triggered.")
 
     # Get the title
     title, summary = await get_title_and_summary(tab)
 
     # # 1️⃣  You click the "Download" link in NotebookLM here …
     #     (the browser starts writing xxx.wav.crdownload)
-    print("⏳  Waiting for the download to finish…")
+    logger.info("⏳  Waiting for the download to finish…")
     wav_path = await wait_for_download(DOWNLOAD_DIR, TIMEOUT_S)
-    print("✅  Download ready →", wav_path)
+    logger.info("✅  Download ready → %s", wav_path)
 
     # Optional: head back to overview
     # Delete the last notebook
@@ -185,4 +189,5 @@ async def generate_podcast(content: str):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     loop().run_until_complete(generate_podcast())
