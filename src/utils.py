@@ -75,7 +75,7 @@ async def first_run_login(browser, tab, cookie_store, custom_url=None) -> None:
     logger.info("🔑  First run — log in in the opened window.")
     if sys.stdin.isatty():
         logger.info("After logging in, press <ENTER> here.")
-        await asyncio.to_thread(input)
+        sys.stdin.readline()  # await asyncio.to_thread(input)
     else:
         logger.info("Running headless; this is not yet supported…")
 

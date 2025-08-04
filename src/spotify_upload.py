@@ -81,4 +81,4 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)s: %(message)s",
     )
 
-    loop().run_until_complete(upload_podcast(latest_wav()))
+    loop().run_until_complete(upload_podcast("test", "summary", latest_wav()))
