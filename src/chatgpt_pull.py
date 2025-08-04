@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import time
 
@@ -52,19 +53,28 @@ async def get_latest_reply() -> str:
     # Get the conversation ID from the .env
     load_dotenv()
     cid = os.getenv("conversation_id")
+    logging.info("Using conversation ID: %s", cid)
     await tab.get(f"https://chat.openai.com/c/{cid}")
 
     # 3️⃣  Poll the page every 500 ms until an assistant bubble exists
+    logging.info("Waiting for the latest reply...")
     html = await get_html(tab)
     # Could refresh the page if it takes too long or conversation could not be loaded
 
     # 4️⃣  Convert HTML → Markdown
+    logging.info("Converting HTML to Markdown...")
     markdown = md(html, strip=["span"]).strip()
 
+    logging.info("Latest reply fetched successfully")
     return markdown
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s: %(message)s",
+    )
+
     nodriver.loop().run_until_complete(get_latest_reply())
 
     # In case of 409 error try via googling: chatGPT and then logging in

@@ -1,10 +1,9 @@
-from pathlib import Path
 import logging
+from pathlib import Path
 
 from nodriver import loop
 
 from utils import first_run_login, get_cookies_store, start_browser
-
 
 logger = logging.getLogger(__name__)
 
@@ -77,5 +76,9 @@ async def upload_podcast(title: str, summary: str, wav_path: Path):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s: %(message)s",
+    )
+
     loop().run_until_complete(upload_podcast(latest_wav()))
