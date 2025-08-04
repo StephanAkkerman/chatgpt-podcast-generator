@@ -47,7 +47,7 @@ async def get_latest_reply() -> str:
 
     cookie_store = get_cookies_store(profile_name)
 
-    await first_run_login(browser, tab, cookie_store, "https://auth.openai.com/log-in")
+    await first_run_login(browser, tab, cookie_store, "https://chatgpt.com/auth/login")
 
     # 2️⃣  Navigate to the conversation
     # Get the conversation ID from the .env

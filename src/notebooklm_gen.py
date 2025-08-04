@@ -194,4 +194,4 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)s: %(message)s",
     )
 
-    loop().run_until_complete(generate_podcast())
+    loop().run_until_complete(generate_podcast("test"))
