@@ -63,6 +63,18 @@ async def start_browser(
     return browser
 
 
+async def manual_checkpoint():
+    """Block until the user presses ENTER *or* Ctrl-C."""
+    prompt = "Log in, then press ENTER (or Ctrl-C) here… "
+    try:
+        # off-load to a thread so the event-loop stays alive
+        await asyncio.to_thread(input, prompt)
+    except (KeyboardInterrupt, EOFError):
+        # Ctrl-C or closed stdin ==> treat as “continue”
+        print("")  # newline so prompt looks finished
+        logger.info("Manual checkpoint skipped via Ctrl-C/EOF")
+
+
 async def first_run_login(browser, tab, cookie_store, custom_url=None) -> None:
     if cookie_store.exists():
         logger.info("Found existing cookies at %s", cookie_store)
@@ -74,8 +86,7 @@ async def first_run_login(browser, tab, cookie_store, custom_url=None) -> None:
 
     logger.info("🔑  First run — log in in the opened window.")
     if sys.stdin.isatty():
-        logger.info("After logging in, press <ENTER> here.")
-        sys.stdin.readline()  # await asyncio.to_thread(input)
+        await manual_checkpoint()
     else:
         logger.info("Running headless; this is not yet supported…")
 
