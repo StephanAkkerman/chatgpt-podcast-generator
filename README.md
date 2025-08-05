@@ -68,12 +68,6 @@ python src/notebooklm_gen.py    # generate NotebookLM audio
 python src/spotify_upload.py    # upload audio to Spotify
 ```
 
-## ChatGPT Login Troubleshooting
-
-If you encounter a `409` error while logging into ChatGPT, open the ChatGPT
-website in a regular browser via Google and sign in before rerunning the
-script.
-
 ## License
 
 This project is released under the [MIT License](LICENSE).
