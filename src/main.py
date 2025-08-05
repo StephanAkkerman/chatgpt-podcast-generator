@@ -21,7 +21,7 @@ def seconds_until_5utc() -> float:
     return (target - now).total_seconds()
 
 
-async def run_once():
+def run_once():
     # nodriver's own helper avoids "event loop closed" issues on Windows
     loop = nodriver.loop()
     md = loop.run_until_complete(get_latest_reply())
@@ -39,7 +39,7 @@ async def scheduler():
         logging.info("Sleeping %.1f s until next 05:00 UTC run", sleep_for)
         await asyncio.sleep(sleep_for)
         try:
-            await run_once()
+            run_once()
             logging.info("Daily run finished")
         except Exception:
             logging.exception("Daily run failed")
