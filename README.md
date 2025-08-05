@@ -37,6 +37,12 @@ Update `.env`:
 conversation_id="YOUR_CONVERSATION_ID"
 ```
 
+Trigger the setup script to install browser drivers and authenticate services:
+
+```bash
+python src/first_time.py
+```
+
 During the first run, browser windows will appear for each service so you can
 log in manually. Authentication cookies are then saved for subsequent runs.
 
@@ -46,6 +52,12 @@ Run the scheduler, which executes once daily at 05:00 UTC:
 
 ```bash
 python src/main.py
+```
+
+To trigger the process immediately, use:
+
+```bash
+python src/main.py --now
 ```
 
 For debugging, each component can also be invoked separately:
