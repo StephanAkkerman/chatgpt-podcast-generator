@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import datetime
 import logging
@@ -10,6 +11,7 @@ from notebooklm_gen import generate_podcast
 from spotify_upload import upload_podcast
 
 UTC = zoneinfo.ZoneInfo("UTC")
+LOGF = "daily.log"
 
 
 def seconds_until_5utc() -> float:
@@ -45,10 +47,30 @@ async def scheduler():
             logging.exception("Daily run failed")
 
 
-if __name__ == "__main__":
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Generate & publish the MarketMind Daily podcast"
+    )
+    parser.add_argument(
+        "-N",
+        "--now",
+        action="store_true",
+        help="Run immediately once and exit (skip the daily schedule)",
+    )
+    args = parser.parse_args()
+
     logging.basicConfig(
-        filename="daily.log",
+        filename=LOGF,
         level=logging.INFO,
         format="%(asctime)s %(levelname)s: %(message)s",
     )
-    asyncio.run(scheduler())
+
+    if args.now:  # instant single run
+        logging.info("Running single-on-demand job via --now")
+        run_once()
+    else:  # regular daily loop
+        asyncio.run(scheduler())
+
+
+if __name__ == "__main__":
+    main()
