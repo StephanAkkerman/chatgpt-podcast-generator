@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import logging
 import time
@@ -9,7 +10,6 @@ from utils import first_run_login, get_cookies_store, start_browser
 
 DOWNLOAD_DIR = Path.home() / "Downloads"
 TIMEOUT_S = 120  # 2-minute max
-
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ async def new_notebook(tab, md: str):
     await copied_text.click()
 
     textarea = await tab.find("textarea[formcontrolname='text']")
-    await textarea.send_keys(md)
+    await textarea.send_keys(md)  # TODO: make this quicker
 
     # Submit the dialog form directly (works for every language / theme)
     await tab.evaluate("document.querySelector('form.content')?.requestSubmit()")
@@ -189,9 +189,15 @@ async def generate_podcast(content: str):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Generate a podcast using NotebookLM.")
+    parser.add_argument(
+        "content", type=str, help="The content to use for generating the notebook."
+    )
+    args = parser.parse_args()
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s: %(message)s",
     )
 
-    loop().run_until_complete(generate_podcast("test"))
+    loop().run_until_complete(generate_podcast(args.content))

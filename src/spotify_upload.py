@@ -1,3 +1,4 @@
+import argparse
 import logging
 from pathlib import Path
 
@@ -76,9 +77,16 @@ async def upload_podcast(title: str, summary: str, wav_path: Path):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Upload a podcast to Spotify.")
+    parser.add_argument("title", type=str, help="The title of the podcast episode.")
+    parser.add_argument(
+        "summary", type=str, help="The summary/description of the podcast episode."
+    )
+    args = parser.parse_args()
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s: %(message)s",
     )
 
-    loop().run_until_complete(upload_podcast("test", "summary", latest_wav()))
+    loop().run_until_complete(upload_podcast(args.title, args.summary, latest_wav()))
