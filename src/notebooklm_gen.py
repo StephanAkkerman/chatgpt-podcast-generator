@@ -54,14 +54,19 @@ async def new_notebook(tab, md: str):
     await my_notebooks_button.click()
 
     # ---- after you clicked “Create / New notebook” -------------------
+    logger.info("⏳  Waiting for the new notebook dialog to appear…")
     copied_text = await tab.find("Copied text")
     await copied_text.click()
+    logger.info("✅  Pressed copied text button.")
 
+    logger.info("⏳  Waiting for the text input to appear…")
     textarea = await tab.find("textarea[formcontrolname='text']")
     await textarea.send_keys(md)  # TODO: make this quicker
+    logger.info("✅  Updated text area.")
 
     # Submit the dialog form directly (works for every language / theme)
     await tab.evaluate("document.querySelector('form.content')?.requestSubmit()")
+    logger.info("✅  Submitted input text.")
 
     # TODO: press the customize button on Audio Overview
 
@@ -69,10 +74,11 @@ async def new_notebook(tab, md: str):
     AUDIO_BTN = "button.audio-overview-button"
 
     # wait until the button exists *and* is enabled
+    logger.info("⏳  Waiting for the Audio Overview button to be enabled…")
     await tab.wait_for(AUDIO_BTN + ":not([disabled])", timeout=20_000)
-
     btn = await tab.select(AUDIO_BTN)  # → NodeHandle
     await btn.click()
+    logger.info("✅  Pressed Audio Overview button.")
 
 
 async def existing_notebook(tab):
@@ -170,11 +176,14 @@ async def generate_podcast(content: str):
     await (await tab.select("button.audio-controls-button.menu-button")).click()
     logger.info("✅  Menu opened.")
 
+    logger.info("⏳  Looking for the download button")
     await (await tab.select("a[download]")).click()
     logger.info("✅  Download triggered.")
 
     # Get the title
+    logger.info("⏳  Looking for the notebook title and summary")
     title, summary = await get_title_and_summary(tab)
+    logger.info("✅  Got notebook title and summary.")
 
     # # 1️⃣  You click the "Download" link in NotebookLM here …
     #     (the browser starts writing xxx.wav.crdownload)
