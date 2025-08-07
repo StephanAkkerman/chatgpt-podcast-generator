@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import datetime
 import logging
+import sys
 import zoneinfo
 
 import nodriver
@@ -60,9 +61,13 @@ def main() -> None:
     args = parser.parse_args()
 
     logging.basicConfig(
-        filename=LOGF,
         level=logging.INFO,
         format="%(asctime)s %(levelname)s: %(message)s",
+        handlers=[
+            logging.FileHandler(LOGF, encoding="utf-8"),  # file
+            logging.StreamHandler(sys.stdout),  # console
+        ],
+        # force=True  # uncomment on 3.8+ if re-running in the same process
     )
 
     if args.now:  # instant single run
