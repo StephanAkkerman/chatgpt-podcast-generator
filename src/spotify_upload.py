@@ -9,18 +9,20 @@ from utils import first_run_login, get_cookies_store, start_browser
 logger = logging.getLogger(__name__)
 
 
-def latest_wav(downloads: Path | None = None) -> Path:
-    """Return newest *.wav in the given folder (or ~/Downloads)."""
+def latest_audio(downloads: Path | None = None) -> Path:
+    """Return newest .wav or .m4a in the folder (default: ~/Downloads)."""
     downloads = downloads or (Path.home() / "Downloads")
-    wavs = sorted(
-        downloads.glob("*.wav"), key=lambda p: p.stat().st_mtime, reverse=True
-    )
-    if not wavs:
-        raise FileNotFoundError("No .wav files in Downloads")
-    return wavs[0]
+    candidates = [
+        p
+        for p in downloads.iterdir()
+        if p.is_file() and p.suffix.lower() in {".wav", ".m4a"}
+    ]
+    if not candidates:
+        raise FileNotFoundError("No .wav or .m4a files found in Downloads")
+    return max(candidates, key=lambda p: p.stat().st_mtime)
 
 
-async def upload_podcast(title: str, summary: str, wav_path: Path):
+async def upload_podcast(title: str, summary: str, audio_path: Path):
     profile_name = "spotify"
     browser = await start_browser(profile_name=profile_name)
     tab = browser.main_tab
@@ -39,8 +41,8 @@ async def upload_podcast(title: str, summary: str, wav_path: Path):
 
     # 3.  inject file *without* opening the OS chooser
     # TODO: get the lastest .wav of .m4a file (take the most recent of either)
-    await file_input.send_file(wav_path)
-    logger.info("⏫  upload started: %s", wav_path)
+    await file_input.send_file(audio_path)
+    logger.info("⏫  upload started: %s", audio_path)
 
     # Fill in the title
     textarea = await tab.find("input[name='title']")
@@ -74,7 +76,7 @@ async def upload_podcast(title: str, summary: str, wav_path: Path):
     await (await tab.select(PUBLISH_SEL)).click()
 
     # Remove the .wav file from the local disk
-    wav_path.unlink(missing_ok=True)
+    audio_path.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
@@ -90,4 +92,4 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)s: %(message)s",
     )
 
-    loop().run_until_complete(upload_podcast(args.title, args.summary, latest_wav()))
+    loop().run_until_complete(upload_podcast(args.title, args.summary, latest_audio()))
