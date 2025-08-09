@@ -156,43 +156,6 @@ async def get_title_and_summary(tab):
     return title, summary
 
 
-AUDIO_MENU_SELECTORS = [
-    "button.artifact-more-button",  # current UI (RPi Chromium)
-    "button.audio-controls-button.menu-button",  # older UI
-    "button.audio-controls-button",  # variant
-    "button.mat-mdc-menu-trigger[aria-label*='More']",  # locale-agnostic-ish
-    "button[mattooltip*='More']",  # tooltip text
-]
-
-
-async def click_audio_menu(tab, timeout_ms: int = 120_000):
-    """Find & click the Audio Overview '…' menu button (NotebookLM)."""
-    t0 = time.time()
-    last_err = None
-    while (time.time() - t0) * 1000 < timeout_ms:
-        for sel in AUDIO_MENU_SELECTORS:
-            try:
-                el = await tab.select(sel)
-                if not el:
-                    continue
-                # first try a normal click
-                try:
-                    await el.click()
-                except Exception:
-                    # fall back to JS click (helps when overlay intercepts)
-                    await tab.evaluate(
-                        f"document.querySelector({json.dumps(sel)})?.click()"
-                    )
-                return  # success
-            except Exception as e:
-                last_err = e
-                continue
-        await asyncio.sleep(0.25)
-    raise TimeoutError(
-        f"Audio menu button not found/clickable after {timeout_ms} ms; last error: {last_err}"
-    )
-
-
 async def generate_podcast(content: str):
     profile_name = "notebooklm"
     browser = await start_browser(headless=False, profile_name=profile_name)
@@ -213,7 +176,10 @@ async def generate_podcast(content: str):
 
     # Wait until the "Audio Overview" button is enabled
     logger.info("⏳  Waiting for the audio controls menu to appear…")
-    await click_audio_menu(tab, timeout_ms=300_000)
+    menu_button = "button.artifact-more-button"
+    # Wait for the button to be ready
+    await tab.wait_for(menu_button + ":not([disabled])", timeout=300_000)
+    await (await tab.select(menu_button)).click()
     logger.info("✅  Menu opened.")
 
     logger.info("⏳  Looking for the download button")
