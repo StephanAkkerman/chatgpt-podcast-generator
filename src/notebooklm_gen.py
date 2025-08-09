@@ -206,10 +206,10 @@ async def generate_podcast(content: str):
     await first_run_login(browser, tab, cookie_store)
 
     # Create a new notebook
-    # await new_notebook(tab, content)
+    await new_notebook(tab, content)
 
     # Debugging: use existing notebook
-    await existing_notebook(tab)
+    # await existing_notebook(tab)
 
     # Wait until the "Audio Overview" button is enabled
     logger.info("⏳  Waiting for the audio controls menu to appear…")
