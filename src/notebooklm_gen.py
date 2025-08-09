@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import json
 import logging
 import time
 from pathlib import Path
@@ -71,12 +72,13 @@ async def new_notebook(tab, md: str):
     # TODO: press the customize button on Audio Overview
 
     # Press the "Audio Overview" button
-    AUDIO_BTN = "button.audio-controls-button[aria-label*='options']"
+    AUDIO_BTN = "button.audio-overview-button"
 
     # wait until the button exists *and* is enabled
     logger.info("⏳  Waiting for the Audio Overview button to be enabled…")
-    await tab.wait_for(AUDIO_BTN, timeout=300_000)
-    await (await tab.select(AUDIO_BTN)).click()
+    await tab.wait_for(AUDIO_BTN + ":not([disabled])", timeout=20_000)
+    btn = await tab.select(AUDIO_BTN)  # → NodeHandle
+    await btn.click()
     logger.info("✅  Pressed Audio Overview button.")
 
 
@@ -94,11 +96,14 @@ async def existing_notebook(tab):
     # ── 3. click the FIRST tile (top-left = newest by default) ─────────
     first_card = await tab.select(CARD_SEL)
     await first_card.click()
+    logger.info("✅  Opened existing notebook.")
 
     # Click the load button (only when the notebook does already exist)
-    LOAD_BTN = "button[aria-label='Load the Audio Overview']"  # unique attribute
-    await tab.wait_for(LOAD_BTN + ":not([disabled])", timeout=60_000)
-    await (await tab.select(LOAD_BTN)).click()
+    # logger.info("⏳  Waiting for the Load button to be enabled…")
+    # LOAD_BTN = "button[aria-label='Load the Audio Overview']"  # unique attribute
+    # await tab.wait_for(LOAD_BTN + ":not([disabled])", timeout=60_000)
+    # await (await tab.select(LOAD_BTN)).click()
+    # logger.info("✅  Load button clicked.")
 
     # ── 4. wait until the notebook view finishes loading ───────────────
     await tab.wait_for("button.audio-overview-button", timeout=20_000)
@@ -151,6 +156,43 @@ async def get_title_and_summary(tab):
     return title, summary
 
 
+AUDIO_MENU_SELECTORS = [
+    "button.artifact-more-button",  # current UI (RPi Chromium)
+    "button.audio-controls-button.menu-button",  # older UI
+    "button.audio-controls-button",  # variant
+    "button.mat-mdc-menu-trigger[aria-label*='More']",  # locale-agnostic-ish
+    "button[mattooltip*='More']",  # tooltip text
+]
+
+
+async def click_audio_menu(tab, timeout_ms: int = 120_000):
+    """Find & click the Audio Overview '…' menu button (NotebookLM)."""
+    t0 = time.time()
+    last_err = None
+    while (time.time() - t0) * 1000 < timeout_ms:
+        for sel in AUDIO_MENU_SELECTORS:
+            try:
+                el = await tab.select(sel)
+                if not el:
+                    continue
+                # first try a normal click
+                try:
+                    await el.click()
+                except Exception:
+                    # fall back to JS click (helps when overlay intercepts)
+                    await tab.evaluate(
+                        f"document.querySelector({json.dumps(sel)})?.click()"
+                    )
+                return  # success
+            except Exception as e:
+                last_err = e
+                continue
+        await asyncio.sleep(0.25)
+    raise TimeoutError(
+        f"Audio menu button not found/clickable after {timeout_ms} ms; last error: {last_err}"
+    )
+
+
 async def generate_podcast(content: str):
     profile_name = "notebooklm"
     browser = await start_browser(headless=False, profile_name=profile_name)
@@ -164,19 +206,19 @@ async def generate_podcast(content: str):
     await first_run_login(browser, tab, cookie_store)
 
     # Create a new notebook
-    await new_notebook(tab, content)
+    # await new_notebook(tab, content)
 
     # Debugging: use existing notebook
-    # await existing_notebook(tab)
+    await existing_notebook(tab)
 
     # Wait until the "Audio Overview" button is enabled
     logger.info("⏳  Waiting for the audio controls menu to appear…")
-    await tab.wait_for("button.audio-controls-button.menu-button", timeout=300_000)
-    await (await tab.select("button.audio-controls-button.menu-button")).click()
+    await click_audio_menu(tab, timeout_ms=300_000)
     logger.info("✅  Menu opened.")
 
     logger.info("⏳  Looking for the download button")
-    await (await tab.select("a[download]")).click()
+    # Find the download button
+    await (await tab.find("download")).click()
     logger.info("✅  Download triggered.")
 
     # Get the title
