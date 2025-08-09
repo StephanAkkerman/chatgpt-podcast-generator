@@ -71,13 +71,12 @@ async def new_notebook(tab, md: str):
     # TODO: press the customize button on Audio Overview
 
     # Press the "Audio Overview" button
-    AUDIO_BTN = "button.audio-overview-button"
+    AUDIO_BTN = "button.audio-controls-button[aria-label*='options']"
 
     # wait until the button exists *and* is enabled
     logger.info("⏳  Waiting for the Audio Overview button to be enabled…")
-    await tab.wait_for(AUDIO_BTN + ":not([disabled])", timeout=20_000)
-    btn = await tab.select(AUDIO_BTN)  # → NodeHandle
-    await btn.click()
+    await tab.wait_for(AUDIO_BTN, timeout=300_000)
+    await (await tab.select(AUDIO_BTN)).click()
     logger.info("✅  Pressed Audio Overview button.")
 
 

@@ -38,6 +38,7 @@ async def upload_podcast(title: str, summary: str, wav_path: Path):
     file_input = await tab.select("input[type='file']")  # Element handle
 
     # 3.  inject file *without* opening the OS chooser
+    # TODO: get the lastest .wav of .m4a file (take the most recent of either)
     await file_input.send_file(wav_path)
     logger.info("⏫  upload started: %s", wav_path)
 
