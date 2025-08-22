@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import json
 import logging
 import time
 from pathlib import Path
@@ -200,6 +199,9 @@ async def generate_podcast(content: str):
 
     # Optional: head back to overview
     # Delete the last notebook
+
+    # Stop browser
+    browser.stop()
 
     return title, summary, wav_path
 

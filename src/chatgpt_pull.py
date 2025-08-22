@@ -66,6 +66,10 @@ async def get_latest_reply() -> str:
     markdown = md(html, strip=["span"]).strip()
 
     logging.info("Latest reply fetched successfully")
+
+    # Stop browser
+    browser.stop()
+
     return markdown
 
 

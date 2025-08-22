@@ -78,6 +78,9 @@ async def upload_podcast(title: str, summary: str, audio_path: Path):
     # Remove the .wav file from the local disk
     audio_path.unlink(missing_ok=True)
 
+    # Stop browser
+    browser.stop()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Upload a podcast to Spotify.")

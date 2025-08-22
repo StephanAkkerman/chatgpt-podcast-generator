@@ -39,28 +39,40 @@ async def start_browser(
     profile_name: str = "chrome_profile",
     cookies_file: str = "cookies.json",
     headless: bool = False,
+    max_tries: int = 3,
 ) -> nodriver.Browser:
-    """Launch nodriver with our persistent profile."""
+    """Launch nodriver with a persistent profile, with retries & cleanup."""
     profile_dir = get_profile_dir(profile_name)
+    profile_dir.mkdir(parents=True, exist_ok=True)
 
-    browser = await nodriver.start(
-        headless=headless,
-        no_sandbox=True,
-        user_data_dir=profile_dir,
-        browser_args=EXTRA_ARGS,
-    )
-    logger.info("🔍  Browser started with profile: %s", profile_dir)
+    last_exc = None
+    for attempt in range(1, max_tries + 1):
+        try:
+            browser = await nodriver.start(
+                headless=headless,
+                no_sandbox=True,  # important when running as root
+                user_data_dir=profile_dir,
+                browser_args=EXTRA_ARGS,
+            )
+            # Load cookies if present
+            cookies_store = get_cookies_store(profile_name, cookies_file)
+            if cookies_store.exists():
+                await browser.cookies.load(cookies_store)
+                logger.info("🔑  Cookies loaded from %s", cookies_store)
 
-    cookies_store = get_cookies_store(profile_name, cookies_file)
+            logger.info("✅ Browser started (try %d/%d)", attempt, max_tries)
+            return browser
 
-    # Load the cookies if they exist
-    if cookies_store.exists():
-        await browser.cookies.load(cookies_store)
-        logger.info("🔑  Cookies loaded from: %s", cookies_store)
-    else:
-        logger.info("🔑  No cookies found, starting fresh session.")
+        except Exception as e:
+            last_exc = e
+            logger.warning(
+                "Browser start failed (try %d/%d): %s", attempt, max_tries, e
+            )
 
-    return browser
+            # small backoff (exponential)
+            await asyncio.sleep(1.5 * attempt)
+
+    raise RuntimeError(f"Failed to start browser after {max_tries} tries: {last_exc}")
 
 
 async def first_run_login(browser, tab, cookie_store, custom_url=None) -> None:
