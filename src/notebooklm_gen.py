@@ -4,7 +4,8 @@ import logging
 import time
 from pathlib import Path
 
-from nodriver import loop
+# from nodriver import loop
+from zendriver import loop
 
 from utils import first_run_login, get_cookies_store, start_browser
 
@@ -201,7 +202,7 @@ async def generate_podcast(content: str):
     # Delete the last notebook
 
     # Stop browser
-    browser.stop()
+    await browser.stop()
 
     return title, summary, wav_path
 

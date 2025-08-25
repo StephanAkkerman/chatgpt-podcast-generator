@@ -6,7 +6,8 @@ import urllib.parse
 from dataclasses import dataclass
 from typing import Dict
 
-import nodriver
+# import nodriver
+import zendriver as nodriver
 
 from utils import get_cookies_store, start_browser
 

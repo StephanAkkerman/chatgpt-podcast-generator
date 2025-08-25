@@ -3,8 +3,11 @@ import logging
 import os
 import time
 
-import nodriver
-import nodriver.core.connection as ndc
+import zendriver as nodriver
+
+# import nodriver
+# import nodriver.core.connection as ndc
+import zendriver.core.connection as ndc
 from dotenv import load_dotenv
 from markdownify import markdownify as md
 
@@ -68,7 +71,7 @@ async def get_latest_reply() -> str:
     logging.info("Latest reply fetched successfully")
 
     # Stop browser
-    browser.stop()
+    await browser.stop()
 
     return markdown
 
@@ -79,6 +82,7 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)s: %(message)s",
     )
 
-    nodriver.loop().run_until_complete(get_latest_reply())
+    result = nodriver.loop().run_until_complete(get_latest_reply())
+    print(result)
 
     # In case of 409 error try via googling: chatGPT and then logging in

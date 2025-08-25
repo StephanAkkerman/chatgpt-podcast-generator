@@ -3,7 +3,8 @@ import logging
 import sys
 from pathlib import Path
 
-import nodriver
+# import nodriver
+import zendriver as zd
 
 EXTRA_ARGS = [
     "--disable-dev-shm-usage",
@@ -40,7 +41,7 @@ async def start_browser(
     cookies_file: str = "cookies.json",
     headless: bool = False,
     max_tries: int = 3,
-) -> nodriver.Browser:
+) -> zd.Browser:
     """Launch nodriver with a persistent profile, with retries & cleanup."""
     profile_dir = get_profile_dir(profile_name)
     profile_dir.mkdir(parents=True, exist_ok=True)
@@ -48,7 +49,7 @@ async def start_browser(
     last_exc = None
     for attempt in range(1, max_tries + 1):
         try:
-            browser = await nodriver.start(
+            browser = await zd.start(
                 headless=headless,
                 no_sandbox=True,  # important when running as root
                 user_data_dir=profile_dir,

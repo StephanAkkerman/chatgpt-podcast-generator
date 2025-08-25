@@ -2,7 +2,8 @@ import argparse
 import logging
 from pathlib import Path
 
-from nodriver import loop
+# from nodriver import loop
+from zendriver import loop
 
 from utils import first_run_login, get_cookies_store, start_browser
 
@@ -79,7 +80,7 @@ async def upload_podcast(title: str, summary: str, audio_path: Path):
     audio_path.unlink(missing_ok=True)
 
     # Stop browser
-    browser.stop()
+    await browser.stop()
 
 
 if __name__ == "__main__":
