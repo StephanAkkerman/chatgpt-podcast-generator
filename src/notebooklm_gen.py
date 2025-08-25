@@ -1,6 +1,6 @@
-import argparse
 import asyncio
 import logging
+import tempfile
 import time
 from pathlib import Path
 
@@ -169,6 +169,8 @@ async def generate_podcast(content: str):
     await first_run_login(browser, tab, cookie_store)
 
     # Create a new notebook
+    if content is None:
+        content = (Path(tempfile.gettempdir()) / "notebook_content.txt").read_text()
     await new_notebook(tab, content)
 
     # Debugging: use existing notebook
@@ -204,19 +206,19 @@ async def generate_podcast(content: str):
     # Stop browser
     await browser.stop()
 
+    # Save the title and summary
+    temp_dir = Path(tempfile.gettempdir())
+    (temp_dir / "notebook_title.txt").write_text(title)
+    (temp_dir / "notebook_summary.txt").write_text(summary)
+
     return title, summary, wav_path
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate a podcast using NotebookLM.")
-    parser.add_argument(
-        "content", type=str, help="The content to use for generating the notebook."
-    )
-    args = parser.parse_args()
-
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s: %(message)s",
     )
 
-    loop().run_until_complete(generate_podcast(args.content))
+    result = loop().run_until_complete(generate_podcast(None))
+    print(result)

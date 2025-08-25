@@ -1,5 +1,5 @@
-import argparse
 import logging
+import tempfile
 from pathlib import Path
 
 # from nodriver import loop
@@ -46,6 +46,9 @@ async def upload_podcast(title: str, summary: str, audio_path: Path):
     logger.info("⏫  upload started: %s", audio_path)
 
     # Fill in the title
+    if title is None:
+        # read from /temp
+        title = (Path(tempfile.gettempdir()) / "notebook_title.txt").read_text()
     textarea = await tab.find("input[name='title']")
     await textarea.send_keys(title)
 
@@ -59,6 +62,8 @@ async def upload_podcast(title: str, summary: str, audio_path: Path):
     await box.click()
 
     # Type the summary
+    if summary is None:
+        summary = (Path(tempfile.gettempdir()) / "notebook_summary.txt").read_text()
     await box.send_keys(summary)
     logger.info("📝  Description field filled")
 
@@ -84,16 +89,9 @@ async def upload_podcast(title: str, summary: str, audio_path: Path):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Upload a podcast to Spotify.")
-    parser.add_argument("title", type=str, help="The title of the podcast episode.")
-    parser.add_argument(
-        "summary", type=str, help="The summary/description of the podcast episode."
-    )
-    args = parser.parse_args()
-
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s: %(message)s",
     )
 
-    loop().run_until_complete(upload_podcast(args.title, args.summary, latest_audio()))
+    loop().run_until_complete(upload_podcast(None, None, latest_audio()))

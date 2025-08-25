@@ -1,7 +1,9 @@
 import asyncio
 import logging
 import os
+import tempfile
 import time
+from pathlib import Path
 
 import zendriver as nodriver
 
@@ -72,6 +74,9 @@ async def get_latest_reply() -> str:
 
     # Stop browser
     await browser.stop()
+
+    # Save the results in /temp
+    (Path(tempfile.gettempdir()) / "latest_reply.md").write_text(markdown)
 
     return markdown
 
