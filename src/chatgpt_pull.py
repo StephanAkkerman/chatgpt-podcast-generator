@@ -1,6 +1,8 @@
 import asyncio
+import json
 import logging
 import os
+import re
 import tempfile
 import time
 from pathlib import Path
@@ -69,16 +71,34 @@ async def get_latest_reply() -> str:
     # 4️⃣  Convert HTML → Markdown
     logging.info("Converting HTML to Markdown...")
     markdown = md(html, strip=["span"]).strip()
-
     logging.info("Latest reply fetched successfully")
 
     # Stop browser
     await browser.stop()
 
+    # try to capture a fenced ```json ... ``` block (tolerates "Copy code" noise)
+    m = re.search(
+        r"```(?:\s*json)?(?:\s*Copy code)?\s*(\{.*?\})\s*```",
+        markdown,
+        flags=re.S | re.I,
+    )
+    json_str = (
+        m.group(1) if m else markdown[markdown.index("{") : markdown.rindex("}") + 1]
+    )
+
+    data = json.loads(json_str)
+    title = data.get("title", None)
+    description = data.get("description", None)
+    logging.info("Latest reply title: %s", title)
+    logging.info("Latest reply description: %s", description)
+
     # Save the results in /temp
+    logging.info(
+        "Saving the latest reply to a temp location: %s", tempfile.gettempdir()
+    )
     (Path(tempfile.gettempdir()) / "latest_reply.md").write_text(markdown)
 
-    return markdown
+    return markdown, title, description
 
 
 if __name__ == "__main__":

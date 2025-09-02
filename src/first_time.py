@@ -136,7 +136,7 @@ class Site:
                 "➡️  Landed on %s — you can continue navigating.", self.landing_host
             )
             logger.info("💾  Cookies will be auto-saved every 3s to: %s", cookie_store)
-            logger.info("🧹  Press Ctrl-C to stop when you’re done.")
+            logger.info("🧹  Press Ctrl-C to stop when you're done.")
 
             # Keep the session alive until user stops it (Ctrl-C)
             # or until the browser dies (errors will break the sleep).
