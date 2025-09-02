@@ -24,9 +24,10 @@ def seconds_until_5utc() -> float:
 
 # ───────── make the pipeline async ─────────
 async def run_once() -> None:
-    md = await get_latest_reply()
-    title, summary, wav = await generate_podcast(md)
-    await upload_podcast(title, summary, wav)
+    md, title, description = await get_latest_reply()
+    title2, description2, wav = await generate_podcast(md)
+    # Use the NotebookLM title + description as fallback
+    await upload_podcast(title or title2, description or description2, wav)
 
 
 # ───────── daily scheduler ─────────
