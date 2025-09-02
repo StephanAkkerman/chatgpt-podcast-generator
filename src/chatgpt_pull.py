@@ -93,10 +93,11 @@ async def get_latest_reply() -> str:
     logging.info("Latest reply description: %s", description)
 
     # Save the results in /temp
-    logging.info(
-        "Saving the latest reply to a temp location: %s", tempfile.gettempdir()
-    )
-    (Path(tempfile.gettempdir()) / "latest_reply.md").write_text(markdown)
+    temp_dir = Path(tempfile.gettempdir())
+    logging.info("Saving the latest reply to a temp location: %s", temp_dir)
+    (temp_dir / "latest_reply.md").write_text(markdown)
+    (temp_dir / "gpt_title.txt").write_text(title or "")
+    (temp_dir / "gpt_description.txt").write_text(description or "")
 
     return markdown, title, description
 
