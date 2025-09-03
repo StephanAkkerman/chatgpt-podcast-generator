@@ -220,7 +220,6 @@ async def generate_podcast(content: str, debug_mode: bool = False):
     logger.info("✅  Got notebook title and summary.")
 
     # # 1️⃣  You click the "Download" link in NotebookLM here …
-    #     (the browser starts writing xxx.wav.crdownload)
     logger.info("⏳  Waiting for the download to finish…")
     audio_path = await wait_for_download(DOWNLOAD_DIR, TIMEOUT_S)
     logger.info("✅  Download ready → %s", audio_path)
@@ -231,10 +230,9 @@ async def generate_podcast(content: str, debug_mode: bool = False):
     # Stop browser
     await browser.stop()
 
-    # Save the title and summary
-
-    (temp_dir / "notebook_title.txt").write_text(title)
-    (temp_dir / "notebook_summary.txt").write_text(summary)
+    # Save the title and summary in /temp
+    (temp_dir / "notebook_title.txt").write_text(title or "")
+    (temp_dir / "notebook_summary.txt").write_text(summary or "")
 
     return title, summary, audio_path
 

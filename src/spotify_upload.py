@@ -1,5 +1,6 @@
 import logging
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 # from nodriver import loop
@@ -8,6 +9,13 @@ from zendriver import loop
 from utils import first_run_login, get_cookies_store, start_browser
 
 logger = logging.getLogger(__name__)
+
+
+def read_nonempty(p: Path) -> str:
+    try:
+        return p.read_text(encoding="utf-8").strip()
+    except FileNotFoundError:
+        return ""
 
 
 def latest_audio(downloads: Path | None = None) -> Path:
@@ -27,6 +35,7 @@ async def upload_podcast(title: str, summary: str, audio_path: Path):
     profile_name = "spotify"
     browser = await start_browser(profile_name=profile_name)
     tab = browser.main_tab
+    temp_dir = Path(tempfile.gettempdir())
 
     await tab.get("https://creators.spotify.com/pod/dashboard/episode/wizard")
 
@@ -46,9 +55,11 @@ async def upload_podcast(title: str, summary: str, audio_path: Path):
     logger.info("⏫  upload started: %s", audio_path)
 
     # Fill in the title
-    if title is None:
-        # read from /temp
-        title = (Path(tempfile.gettempdir()) / "notebook_title.txt").read_text()
+    title = (
+        read_nonempty(temp_dir / "gpt_title.txt")
+        or read_nonempty(temp_dir / "notebook_title.txt")
+        or f"MarketMind Daily Podcast of {datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
+    )
     textarea = await tab.find("input[name='title']")
     await textarea.send_keys(title)
 
@@ -62,8 +73,11 @@ async def upload_podcast(title: str, summary: str, audio_path: Path):
     await box.click()
 
     # Type the summary
-    if summary is None:
-        summary = (Path(tempfile.gettempdir()) / "notebook_summary.txt").read_text()
+    summary = (
+        read_nonempty(temp_dir / "gpt_description.txt")
+        or read_nonempty(temp_dir / "notebook_summary.txt")
+        or f"MarketMind Daily Podcast of {datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
+    )
     await box.send_keys(summary)
     logger.info("📝  Description field filled")
 
