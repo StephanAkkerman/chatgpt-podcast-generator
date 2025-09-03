@@ -3,6 +3,7 @@ import logging
 import tempfile
 import time
 from pathlib import Path
+from typing import Iterable
 
 # from nodriver import loop
 from zendriver import loop
@@ -15,36 +16,56 @@ TIMEOUT_S = 120  # 2-minute max
 logger = logging.getLogger(__name__)
 
 
-async def wait_for_download(dir_path: Path, timeout_s: int = 120):
+async def wait_for_download(
+    dir_path: Path,
+    timeout_s: int = 120,
+    exts: Iterable[str] = (".wav", ".m4a", ".mp3"),
+    poll_s: float = 0.5,
+) -> Path:
     """
-    Block until Chrome finishes every .crdownload in dir_path
-    (or timeout).  Returns the final file path once complete.
+    Wait until a NEW file with one of `exts` is fully downloaded in `dir_path`.
+    Detects Chrome's .crdownload and ignores pre-existing files.
+    Returns the final Path.
     """
-    t0 = time.perf_counter()
-    final_path = None
+    dir_path = Path(dir_path)
+    start_ts = time.time()  # EPOCH seconds (matches st_mtime)
+    baseline = {p.name for p in dir_path.iterdir()}  # files that already existed
+
+    deadline = start_ts + timeout_s
+    last_sizes: dict[Path, int] = {}
 
     while True:
-        # look for *.crdownload AND any new non-tmp file
+        # any active Chrome temp downloads?
         tmp_files = list(dir_path.glob("*.crdownload"))
-        finished = [
+
+        # candidates that are *new* (not in baseline) and with desired extension
+        candidates = [
             p
             for p in dir_path.iterdir()
-            if not p.name.endswith(".crdownload") and p.stat().st_mtime > t0
+            if p.suffix.lower() in exts
+            and p.name not in baseline
+            and p.stat().st_mtime >= start_ts - 1  # allow 1s clock fuzz
         ]
 
-        if not tmp_files and finished:
-            # assume the most recent finished file is our WAV
-            final_path = max(finished, key=lambda p: p.stat().st_mtime)
-            break
+        # if we have candidates and no temp files are present → likely finished
+        if candidates and not tmp_files:
+            newest = max(candidates, key=lambda p: p.stat().st_mtime)
 
-        if time.perf_counter() - t0 > timeout_s:
-            logger.warning("⏳  Timeout: no download finished in %s seconds", timeout_s)
-            logger.warning("Not yet downloaded: %s", tmp_files)
-            raise TimeoutError("Download did not finish in allotted time")
+            # Optional: double-check the size is stable across two polls
+            size = newest.stat().st_size
+            if last_sizes.get(newest) == size:
+                return newest  # stable → done
+            last_sizes[newest] = size
+            # fall through to sleep then re-check
 
-        await asyncio.sleep(0.5)  # poll twice a second
+        # timeout?
+        if time.time() > deadline:
+            tmp_names = ", ".join(t.name for t in tmp_files) or "none"
+            raise TimeoutError(
+                f"Download did not finish in {timeout_s}s (tmp: {tmp_names})"
+            )
 
-    return final_path
+        await asyncio.sleep(poll_s)
 
 
 async def new_notebook(tab, md: str):
@@ -156,10 +177,11 @@ async def get_title_and_summary(tab):
     return title, summary
 
 
-async def generate_podcast(content: str):
+async def generate_podcast(content: str, debug_mode: bool = False):
     profile_name = "notebooklm"
     browser = await start_browser(headless=False, profile_name=profile_name)
     tab = browser.main_tab
+    temp_dir = Path(tempfile.gettempdir())
 
     await tab.get("https://notebooklm.google.com")
 
@@ -168,13 +190,16 @@ async def generate_podcast(content: str):
     # first‑run interactive login
     await first_run_login(browser, tab, cookie_store)
 
-    # Create a new notebook
+    # Use latest reply as content, if content is None
     if content is None:
-        content = (Path(tempfile.gettempdir()) / "notebook_content.txt").read_text()
-    await new_notebook(tab, content)
+        content = (temp_dir / "latest_reply.md").read_text()
 
     # Debugging: use existing notebook
-    # await existing_notebook(tab)
+    if debug_mode:
+        await existing_notebook(tab)
+    else:
+        # Create a new notebook
+        await new_notebook(tab, content)
 
     # Wait until the "Audio Overview" button is enabled
     logger.info("⏳  Waiting for the audio controls menu to appear…")
@@ -197,8 +222,8 @@ async def generate_podcast(content: str):
     # # 1️⃣  You click the "Download" link in NotebookLM here …
     #     (the browser starts writing xxx.wav.crdownload)
     logger.info("⏳  Waiting for the download to finish…")
-    wav_path = await wait_for_download(DOWNLOAD_DIR, TIMEOUT_S)
-    logger.info("✅  Download ready → %s", wav_path)
+    audio_path = await wait_for_download(DOWNLOAD_DIR, TIMEOUT_S)
+    logger.info("✅  Download ready → %s", audio_path)
 
     # Optional: head back to overview
     # Delete the last notebook
@@ -207,11 +232,11 @@ async def generate_podcast(content: str):
     await browser.stop()
 
     # Save the title and summary
-    temp_dir = Path(tempfile.gettempdir())
+
     (temp_dir / "notebook_title.txt").write_text(title)
     (temp_dir / "notebook_summary.txt").write_text(summary)
 
-    return title, summary, wav_path
+    return title, summary, audio_path
 
 
 if __name__ == "__main__":
@@ -220,5 +245,5 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)s: %(message)s",
     )
 
-    result = loop().run_until_complete(generate_podcast(None))
+    result = loop().run_until_complete(generate_podcast(None, debug_mode=True))
     print(result)
