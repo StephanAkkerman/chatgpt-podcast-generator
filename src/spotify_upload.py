@@ -45,6 +45,14 @@ async def upload_podcast(title: str, summary: str, audio_path: Path):
     # first‑run interactive login
     await first_run_login(browser, tab, cookie_store)
 
+    # In some cases we need to click the "Continue with Spotify" button
+    try:
+        el = await tab.find("Continue with Spotify", timeout=2500)
+        await el.click()
+        logger.info("Clicked 'Continue with Spotify' (text match).")
+    except Exception:
+        pass
+
     # Upload the last .wav file
     await tab.wait_for("input[type='file']", timeout=10_000)
     file_input = await tab.select("input[type='file']")  # Element handle
